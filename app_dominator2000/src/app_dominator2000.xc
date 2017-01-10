@@ -48,8 +48,14 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 				break;
 
 			case i_quadrature.rotate_event():
+				static int last_rotation = 0;
 				int rotation = i_quadrature.get_count();
-				printintln(rotation);
+				if (last_rotation != rotation) {
+					printstrln("");
+					last_rotation = rotation;
+				}
+				if (rotation == 1) printstr("+");
+				if (rotation == -1) printstr("-");
 				break;
 
 			case t_periodic when timerafter(time_periodic_trigger + PERIODIC_TIMER) :> time_periodic_trigger:

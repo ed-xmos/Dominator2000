@@ -12,22 +12,22 @@ static inline void quadrature_decode(int p, unsigned old_port_val[2], unsigned n
 		//Rising edge of signal index 0
 		if (new_port_val[0] == 1) {
 			//printstrln("0 rising");
-			if (old_port_val[1] == 0) count_diff;
-			else	count_diff;
+			if (old_port_val[1] == 0) count_diff++;
+			else	count_diff--;
 		}
 		//Falling edge of signal index 0
 		else {
 			//printstrln("0 falling");
-			if (old_port_val[1] == 0) count_diff;
-			else	count_diff;
+			if (old_port_val[1] == 0) count_diff--;
+			else	count_diff++;
 		}
 	}
 	else { //p == 1
 		//Rising edge of signal index 1
 		if (new_port_val[1] == 1) {
   		//printstrln("1 rising");
-			if (old_port_val[0] == 0) count_diff;
-			else	count_diff;
+			if (old_port_val[0] == 0) count_diff--;
+			else	count_diff++;
 		}
 		//Falling edge of signal index 1
 		else {
