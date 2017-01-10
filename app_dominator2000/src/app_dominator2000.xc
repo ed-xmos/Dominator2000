@@ -49,7 +49,7 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 
 			case i_quadrature.rotate_event():
 				int rotation = i_quadrature.get_count();
-				//printintln(rotation);
+				printintln(rotation);
 				break;
 
 			case t_periodic when timerafter(time_periodic_trigger + PERIODIC_TIMER) :> time_periodic_trigger:

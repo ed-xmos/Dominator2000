@@ -11,29 +11,29 @@ static inline void quadrature_decode(int p, unsigned old_port_val[2], unsigned n
 	if (p == 0){
 		//Rising edge of signal index 0
 		if (new_port_val[0] == 1) {
-			printstrln("0 rising");
-			if (old_port_val[1] == 0) count_diff++;
-			else	count_diff--;
+			//printstrln("0 rising");
+			if (old_port_val[1] == 0) count_diff;
+			else	count_diff;
 		}
 		//Falling edge of signal index 0
 		else {
-			printstrln("0 falling");
-			if (old_port_val[1] == 0) count_diff--;
-			else	count_diff++;
+			//printstrln("0 falling");
+			if (old_port_val[1] == 0) count_diff;
+			else	count_diff;
 		}
 	}
 	else { //p == 1
 		//Rising edge of signal index 1
 		if (new_port_val[1] == 1) {
-  		printstrln("1 rising");
-			if (old_port_val[0] == 0) count_diff--;
-			else	count_diff++;
+  		//printstrln("1 rising");
+			if (old_port_val[0] == 0) count_diff;
+			else	count_diff;
 		}
 		//Falling edge of signal index 1
 		else {
-			printstrln("1 falling");
+			//printstrln("1 falling");
 			if (old_port_val[0] == 0) count_diff++;
-			else	count_diff++;
+			else	count_diff--;
 		}
 	}
 }
@@ -64,9 +64,9 @@ void quadrature(in port p_input[2], server i_quadrature_t i_quadrature) {
 				break;
 
 			case (int p = 0; p < 2; ++p) !debounce_state[p] => p_input[p] when pinsneq(old_port_val[p]) :> new_port_val[p]:
-				debounce_state[p] = DEBOUNCE_READS_N;
+				debounce_state[p] = QUADRATURE_DEBOUNCE_READS_N;
 				t[p] :> trigger_time[p];
-				trigger_time[p] += DEBOUNCE_READ_INTERVAL_TICKS;
+				trigger_time[p] += QUADRATURE_DEBOUNCE_READ_INTERVAL_TICKS;
 				//printstr("*");
 				break;
 
@@ -74,7 +74,7 @@ void quadrature(in port p_input[2], server i_quadrature_t i_quadrature) {
 				int tmp_port_val;
 				p_input[p] :> tmp_port_val;
 				if (new_port_val[p] != tmp_port_val) {
-					debounce_state[p] = DEBOUNCE_READS_N; //start again until stable
+					debounce_state[p] = QUADRATURE_DEBOUNCE_READS_N; //start again until stable
 				}
 				else {
 					debounce_state[p]--;
@@ -83,12 +83,12 @@ void quadrature(in port p_input[2], server i_quadrature_t i_quadrature) {
 						unsigned changed = old_port_val[p] ^ new_port_val[p];
 						if (changed) {
 							quadrature_decode(p, old_port_val, new_port_val, count_diff);
-							i_quadrature.rotate_event();
+							if (count_diff != 0) i_quadrature.rotate_event();
 						}
 						old_port_val[p] = new_port_val[p];
 					}
 				}
-				trigger_time[p] += DEBOUNCE_READ_INTERVAL_TICKS;
+				trigger_time[p] += QUADRATURE_DEBOUNCE_READ_INTERVAL_TICKS;
 				new_port_val[p] = tmp_port_val;
 				//printstr(".");
 				break;
