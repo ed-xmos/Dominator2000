@@ -4,6 +4,7 @@
 #include "pwm_wide.h"
 #include "buttons.h"
 #include "quadrature.h"
+#include "resistor.h"
 
 #define PWM_PORT_BITS_N			4
 #define PWM_DEPTH_BITS_N		8
