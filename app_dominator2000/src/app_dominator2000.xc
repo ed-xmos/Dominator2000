@@ -12,12 +12,14 @@
 
 out port p_leds = XS1_PORT_4F;
 in port p_butt = XS1_PORT_4E;
+port p_adc = XS1_PORT_1I;
 
 in port p_quadrature[2] = {XS1_PORT_1G, XS1_PORT_1H};
 
 #define PERIODIC_TIMER	8000000	//80ms
 
-void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned duties[PWM_PORT_BITS_N], client i_quadrature_t i_quadrature) {
+void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned duties[PWM_PORT_BITS_N],
+	client i_quadrature_t i_quadrature, client i_resistor_t i_resistor) {
 	button_event_t button_event[MAX_INPUT_PORT_BITS] = {0};
 	duties[0] = 0;
 	duties[1] = 0;
@@ -59,11 +61,17 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 				if (rotation == -1) printstr("-");
 				break;
 
+			case i_resistor.value_change_event():
+				printintln(i_resistor.get_val());
+				break;
+
 			case t_periodic when timerafter(time_periodic_trigger + PERIODIC_TIMER) :> time_periodic_trigger:
 				duties[led_index] = new_duty;
 				new_duty <<= 1;
 				//printintln(new_duty);
 				if (new_duty == 0x100) new_duty = 0x1;
+
+
 				break;
 		}
 	}
@@ -75,6 +83,7 @@ int main(void) {
 
 	i_buttons_t i_buttons;
 	i_quadrature_t i_quadrature;
+	i_resistor_t i_resistor;
 
 
 	unsafe{ duties_ptr = duties;}
@@ -83,8 +92,9 @@ int main(void) {
 	par {
 		pwm_wide_unbuffered(p_leds, PWM_PORT_BITS_N, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, duties_ptr);
 		port_input_debounced(p_butt, 4, i_buttons);
-		app(4, i_buttons, duties, i_quadrature);
+		app(4, i_buttons, duties, i_quadrature, i_resistor);
 		quadrature(p_quadrature, i_quadrature);
+		resistor_reader(p_adc, i_resistor);
 	}
 	return 0;
 }
