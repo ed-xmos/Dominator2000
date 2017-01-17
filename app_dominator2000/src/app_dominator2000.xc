@@ -5,6 +5,7 @@
 #include "buttons.h"
 #include "quadrature.h"
 #include "resistor.h"
+#include "pwm_fast.h"
 
 #define PWM_PORT_BITS_N			4
 #define PWM_DEPTH_BITS_N		8
@@ -13,6 +14,7 @@
 out port p_leds = XS1_PORT_4F;
 in port p_butt = XS1_PORT_4E;
 port p_adc = XS1_PORT_1I;
+buffered out port:32 p_pwm_fast = XS1_PORT_1J;
 
 in port p_quadrature[2] = {XS1_PORT_1G, XS1_PORT_1H};
 
@@ -84,7 +86,7 @@ int main(void) {
 	i_buttons_t i_buttons;
 	i_quadrature_t i_quadrature;
 	i_resistor_t i_resistor;
-
+	streaming chan c_pwm_fast;
 
 	unsafe{ duties_ptr = duties;}
 
@@ -95,6 +97,12 @@ int main(void) {
 		app(4, i_buttons, duties, i_quadrature, i_resistor);
 		quadrature(p_quadrature, i_quadrature);
 		resistor_reader(p_adc, i_resistor);
+		pwm_fast(c_pwm_fast, p_pwm_fast);
+		{
+			while(1){
+				c_pwm_fast <: 128 + 0x10000;
+			}
+		}
 	}
 	return 0;
 }
