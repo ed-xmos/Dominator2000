@@ -1,3 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xSCOPEconfig ioMode="basic" enabled="true">
+	  <Probe name="TP0" type="CONTINUOUS" datatype="INT" units="Value" enabled="true"/>
 </xSCOPEconfig>

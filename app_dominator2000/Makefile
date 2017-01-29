@@ -17,10 +17,11 @@ APP_NAME =
 # If the variable XCC_MAP_FLAGS is set it overrides the flags passed to 
 # xcc for the final link (mapping) stage.
 
-XCC_FLAGS = -Wall -O2 -g -report
+XCC_FLAGS = -Wall -Os -g -report 
+#-DUNSAFE_LIBC
 
 # The USED_MODULES variable lists other module used by the application. 
-USED_MODULES = module_buttons module_pwm_wide module_quadrature_encoder module_resistor_read module_pwm_fast
+USED_MODULES = module_buttons module_pwm_wide module_quadrature_encoder module_resistor_read module_pwm_fast module_mp3
 
 
 sim: bin/app_dominator2000.xe
