@@ -15,7 +15,7 @@
 #define PWM_DEPTH_BITS_N		8			//For wide PWM
 #define PWM_WIDE_FREQ_HZ		500
 
-#define MAX_MP3_FRAME_SIZE	2048	//samples
+#define MAX_MP3_FRAME_SIZE	1152	//samples
 #define UPSAMPLE_RATIO			8
 
 out port p_leds = XS1_PORT_4F;
@@ -98,7 +98,7 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 unsigned malibu_idx = 0;
 
 void mp3_player(streaming chanend c_mp3_chan) {
-	int data_available_to_send = 417;
+	int data_available_to_send = 1500; //417;
 	int index = 0;
 
 	while(1){
@@ -116,7 +116,7 @@ void mp3_player(streaming chanend c_mp3_chan) {
 
 void src(short * input_array, unsigned n_in_samples, unsigned char * output_array ) {
 	for (int i = 0; i < n_in_samples; i++){
-		unsigned out_idx = i << 3; //upsample by 8
+		unsigned out_idx = i * UPSAMPLE_RATIO;
 		short sample = input_array[i];
 		unsigned char duty = (sample >> 8) + 128;
 		output_array[out_idx + 0] = duty;
@@ -135,17 +135,9 @@ unsigned char pwm_test[] = { 0 , 10, 20, 30, 40, 50, 60, 70, 80, 90 , 100, 110, 
 
 void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast) {
 
-	short sample_buff[2][32];		//Stereo = 32x l+r words
+	short sample_buff[MAX_MP3_FRAME_SIZE];		//Stereo = 32x l+r words
 	unsigned char duty_dbl_buff[2][MAX_MP3_FRAME_SIZE * UPSAMPLE_RATIO];
 	int duty_dbl_buff_idx = 0;
-
-	unsigned index;
-	unsigned sample_cnt;
-	short sample;
-
-	unsigned frame_ready = 0;
-
-	unsigned channel = 0; 	//0 = left, 1 = right
 
 	unsigned total_samps_this_frame = 0;
 	unsigned total_duties = 0;
@@ -161,38 +153,50 @@ void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast) {
 	while(1){
 		select {
 			case c_pcm_chan :> int word:
-	    		sample = (word >> 16);
-  				index = word & 0xFFFF;
-  				sample_buff[channel][index >> 1] = sample;
-  				channel ^= 1;
-  				//fills in funny order with last entry being 35
-  				if (index == 35) {
-						frame_ready = 1;
-						total_samps += 32;
-						printstr("total_samps_this_frame:"); printintln(total_samps_this_frame);
-						for (int i = 0; i < 32; i++) {
-							printint(sample_buff[0][i]); printstr(", "); printintln(sample_buff[1][i]);
-						}
-  				}
-  				//printint(total_samps_this_frame); printstr(" index:"); printintln(index);
-  				//printint(total_samps_this_frame); printstr(" pcm:"); printintln(sample);
-#if 0
-  				if (0) {
+					unsigned mp3_subframe_index;
+					short tmp_samp;
+					static short sample[2];
+					static unsigned channel = 0; 	//0 = left, 1 = right
 
+	    		tmp_samp = (word >> 16);
+  				mp3_subframe_index = word & 0xFFFF;
+  				sample[channel] = tmp_samp;
+  				//When L & R received, mix them together and store into mono sample buff
+  				if (channel == 1) {
+  					sample_buff[(mp3_subframe_index >> 1) + total_samps_this_frame] = ((sample[0] >> 1) + (sample[1] >> 1));
+  				}
+
+  				// L&R are interleaved so it's L followed by R
+  				channel ^= 1;
+
+  				//printint(total_samps_this_frame); printstr(" index:"); printintln(mp3_subframe_index);
+  				//printint(total_samps_this_frame); printstr(" pcm:"); printintln(sample);
+
+  				//printint((mp3_subframe_index >> 1) + total_samps_this_frame); printstr(","); printintln(tmp_samp);
+
+  				//fills in funny order with last entry of 64 sample block being index 35 for stereo
+  				if (mp3_subframe_index == 35) {
+						total_samps_this_frame += 32;
+						//printstr("total_samps_this_frame:"); printintln(total_samps_this_frame);
+  				}
+
+  				if (total_samps_this_frame == MAX_MP3_FRAME_SIZE){
+  					printstr("Ready for SRC\n");
+  					for(int i = 0; i < total_samps_this_frame; i++) {printint(sample_buff[i]); printstr(", ");} printstrln("");
 	          //Do SRC
-	          src(sample_buff, sample_cnt, duty_dbl_buff[duty_dbl_buff_idx]);
+	          src(sample_buff, total_samps_this_frame, duty_dbl_buff[duty_dbl_buff_idx]);
 
 	          c_pwm_fast :> int _; //Synch - wait for PWM to say it's ready
-	          unsigned duty_count = sample_cnt << 3;
-	          total_dutues += duty_count;
+	          unsigned duty_count = total_samps_this_frame * UPSAMPLE_RATIO;
+	          total_duties += duty_count;
 	          //printintln(total_dutues);
 
 	          //Send buffer to PWM
 	          c_pwm_fast <: (int)duty_dbl_buff[duty_dbl_buff_idx];
 	          c_pwm_fast <: duty_count;
 	          duty_dbl_buff_idx ^= 1;		//Swap buffers
+	          total_samps_this_frame = 0; //Reset frame
 	        }
-#endif
 		    break;
 		}
 	}
