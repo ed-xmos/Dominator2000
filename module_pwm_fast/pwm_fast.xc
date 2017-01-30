@@ -41,12 +41,12 @@ static const unsigned transition_frame[33] = {
 				0xFFFFFFFF,	
 				};	
 
-
+#pragma unsafe arrays
 void pwm_fast(streaming chanend c_pwm, buffered out port:32 p_pwm) {
 	unsigned whole_ones_count;
 	unsigned transition_idx;
 	unsigned whole_zeros_count;
-	unsigned total_frames_count_minus_one = TOTAL_FRAMES_352 - 1;
+	unsigned total_frames_count_minus_one = TOTAL_FRAMES - 1;
 
 	unsigned duty;	//Current duty cycle 0..256
 	unsigned buffer_base = 0;
@@ -86,9 +86,9 @@ void pwm_fast(streaming chanend c_pwm, buffered out port:32 p_pwm) {
 		whole_ones_count = duty >> 5;
 		transition_idx = duty & 0x1f;
 		whole_zeros_count = total_frames_count_minus_one - whole_ones_count;
-		for (int i=0; i<whole_ones_count; i++) p_pwm <: transition_frame[32];
+		for (int i=whole_ones_count; i!=0; --i) p_pwm <: transition_frame[32];
 		p_pwm <: transition_frame[transition_idx];
-		for (int i=0; i<whole_zeros_count; i++	) p_pwm <: transition_frame[0];
+		for (int i=whole_zeros_count; i!=0; --i) p_pwm <: transition_frame[0];
 
 	}
 }
