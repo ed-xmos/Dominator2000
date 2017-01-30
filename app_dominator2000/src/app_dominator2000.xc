@@ -21,8 +21,8 @@
 out port p_leds = XS1_PORT_4F;
 in port p_butt = XS1_PORT_4E;
 port p_adc = XS1_PORT_1I;
-//buffered out port:32 p_pwm_fast = XS1_PORT_1J;
-buffered out port:32 p_pwm_fast = XS1_PORT_1E;
+buffered out port:32 p_pwm_fast = XS1_PORT_1J; //X0D25
+///buffered out port:32 p_pwm_fast = XS1_PORT_1E; //X0D12
 
 
 in port p_quadrature[2] = {XS1_PORT_1G, XS1_PORT_1H};
@@ -92,26 +92,40 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 
 #include "malibu_diet.h"
 #include "sine_left.h"
-//#define MP3_ARRAY_NAME	malibu_diet_stripped_mp3
-#define MP3_ARRAY_NAME	__8khz_250ms_left_44Khz_mp3
+#define MP3_ARRAY_NAME	malibu_diet_stripped_mp3
+//#define MP3_ARRAY_NAME	__8khz_250ms_left_44Khz_mp3
+
+#define MP3_DATA_TRANSFER_SIZE	1500 //Must be bigger than one frame (417B)
+
+
 
 unsigned malibu_idx = 0;
 
 void mp3_player(streaming chanend c_mp3_chan) {
-	int data_available_to_send = 1500; //417;
-	int index = 0;
+	unsigned data_file_size = sizeof(MP3_ARRAY_NAME);
+	unsigned index = 0; //How far through the file we have gone
 
-	while(1){
-		//outuint(c_mp3_chan, data_available_to_send);
-  	c_mp3_chan <: data_available_to_send;
-  	sout_char_array(c_mp3_chan, &MP3_ARRAY_NAME[index], data_available_to_send);
-		if (malibu_idx == sizeof(MP3_ARRAY_NAME)) _Exit(0);
-		//printintln(index);
-		index += data_available_to_send;
-		c_mp3_chan <: 0xDEADBEEF;
-		while(1);
+	printint(data_file_size);
+	while(data_file_size){
+		unsigned data_size_this_frame;
+		if (data_file_size > MP3_DATA_TRANSFER_SIZE) {
+			data_size_this_frame = MP3_DATA_TRANSFER_SIZE;
+			data_file_size -= MP3_DATA_TRANSFER_SIZE;
+		}
+		else {
+			data_size_this_frame = data_file_size;
+			data_file_size = 0;
+		}
+  	c_mp3_chan <: data_size_this_frame;
+  	sout_char_array(c_mp3_chan, &MP3_ARRAY_NAME[index], data_size_this_frame);
+		printintln(index);
+		index += data_size_this_frame;
 	}
 	c_mp3_chan <: 0xDEADBEEF;
+	printstrln("MP3 player sent terminate\n");
+
+	//printstrln("MP3 player NOT sent terminate\n");
+
 }
 
 void src(short * input_array, unsigned n_in_samples, unsigned char * output_array ) {
@@ -181,8 +195,8 @@ void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast) {
   				}
 
   				if (total_samps_this_frame == MAX_MP3_FRAME_SIZE){
-  					printstr("Ready for SRC\n");
-  					for(int i = 0; i < total_samps_this_frame; i++) {printint(sample_buff[i]); printstr(", ");} printstrln("");
+  					//printstr("Ready for SRC\n");
+  					//for(int i = 0; i < total_samps_this_frame; i++) {printint(sample_buff[i]); printstr(", ");} printstrln("");
 	          //Do SRC
 	          src(sample_buff, total_samps_this_frame, duty_dbl_buff[duty_dbl_buff_idx]);
 
@@ -218,9 +232,9 @@ int main(void) {
 
 	par {
 		[[combine]] par {
-			//pwm_wide_unbuffered(p_leds, PWM_PORT_BITS_N, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, duties_ptr);
-			//port_input_debounced(p_butt, 4, i_buttons);
-			//quadrature(p_quadrature, i_quadrature);
+			pwm_wide_unbuffered(p_leds, PWM_PORT_BITS_N, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, duties_ptr);
+			port_input_debounced(p_butt, 4, i_buttons);
+			quadrature(p_quadrature, i_quadrature);
 		}
 		app(4, i_buttons, duties, i_quadrature, i_resistor);
 
