@@ -2,7 +2,7 @@
 # compiled for. It either refers to an XN file in the source directories
 # or a valid argument for the --target option when compiling.
 
-TARGET = XCORE-200-EXPLORER
+TARGET = XCORE-200-EXPLORER.xn
 
 # The APP_NAME variable determines the name of the final .xe file. It should
 # not include the .xe postfix. If left blank the name will default to 
@@ -17,11 +17,11 @@ APP_NAME =
 # If the variable XCC_MAP_FLAGS is set it overrides the flags passed to 
 # xcc for the final link (mapping) stage.
 
-XCC_FLAGS = -Wall -Os -g -report 
+XCC_FLAGS = -Wall -Os -g -report -lquadflash
 #-DUNSAFE_LIBC
 
 # The USED_MODULES variable lists other module used by the application. 
-USED_MODULES = module_buttons module_pwm_wide module_quadrature_encoder module_resistor_read module_pwm_fast module_mp3
+USED_MODULES = module_buttons module_pwm_wide module_quadrature_encoder module_resistor_read module_pwm_fast module_mp3 lib_filesystem
 
 
 sim: bin/app_dominator2000.xe

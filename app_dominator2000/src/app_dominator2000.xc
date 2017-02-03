@@ -4,12 +4,18 @@
 #include <string.h>
 #include <xscope.h>
 #include <stdlib.h> //_Exit()
+#include <stdio.h>
 #include "pwm_wide.h"
 #include "buttons.h"
 #include "quadrature.h"
 #include "resistor.h"
 #include "pwm_fast.h"
 #include "decode_main.h"
+
+#include "filesystem.h"
+#include "qspi_flash_storage_media.h"
+#include <quadflash.h>
+#include <QuadSpecMacros.h>
 
 #define PWM_PORT_BITS_N			4
 #define PWM_DEPTH_BITS_N		8			//For wide PWM
@@ -18,14 +24,21 @@
 #define MAX_MP3_FRAME_SIZE	1152	//samples
 #define UPSAMPLE_RATIO			8
 
-out port p_leds = XS1_PORT_4F;
-in port p_butt = XS1_PORT_4E;
-port p_adc = XS1_PORT_1I;
-buffered out port:32 p_pwm_fast = XS1_PORT_1J; //X0D25
+fl_QSPIPorts qspi_flash_ports = {
+  PORT_SQI_CS,
+  PORT_SQI_SCLK,
+  PORT_SQI_SIO,
+  on tile[0]: XS1_CLKBLK_1
+};
+
+on tile[0]: out port p_leds = XS1_PORT_4F;
+on tile[0]: in port p_butt = XS1_PORT_4E;
+on tile[0]: port p_adc = XS1_PORT_1I;
+on tile[0]: buffered out port:32 p_pwm_fast = XS1_PORT_1J; //X0D25
 ///buffered out port:32 p_pwm_fast = XS1_PORT_1E; //X0D12
 
 
-in port p_quadrature[2] = {XS1_PORT_1G, XS1_PORT_1H};
+on tile[0]: in port p_quadrature[2] = {XS1_PORT_1G, XS1_PORT_1H};
 
 #define PERIODIC_TIMER	8000000	//80ms
 
@@ -98,12 +111,98 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 #define MP3_DATA_TRANSFER_SIZE	1500 //Must be bigger than one frame (417B)
 
 
+#define BUFFER_SIZE      50
+#define PARTIAL_READ_LEN 5
+#define BUFFER_PATTERN   0xAAAAAAAA
 
 unsigned malibu_idx = 0;
 
-void mp3_player(streaming chanend c_mp3_chan) {
+void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan) {
+
+  fs_result_t result;
+
+	printf("Mounting filesystem...\n");
+  result = i_fs.mount();
+  if (result != FS_RES_OK) {
+    printf("result = %d\n", result);
+    exit(1);
+  }
+
+  printf("Opening file...\n");
+  char filename[] = "HNDCLP.MP3";
+  result = i_fs.open(filename, sizeof(filename));
+  if (result != FS_RES_OK) {
+    printf("result = %d\n", result);
+    exit(1);
+  }
+
+  printf("Getting file size...\n");
+  size_t file_size;
+  result = i_fs.size(file_size);
+  if (result != FS_RES_OK) {
+    printf("result = %d\n", result);
+    exit(1);
+  }
+
+  uint8_t buf[BUFFER_SIZE];
+
+  printf("Reading part of file...\n");
+  if(file_size < PARTIAL_READ_LEN) printf("Partial read length exceeds file size!\n");
+  size_t bytes_to_read = 0;
+  size_t num_bytes_read = 0;
+  // Init buffer with pattern
+  memset(buf, BUFFER_PATTERN, BUFFER_SIZE);
+  bytes_to_read = PARTIAL_READ_LEN;
+  result = i_fs.read(buf, sizeof(buf), bytes_to_read, num_bytes_read);
+  if (result != FS_RES_OK) {
+    printf("result = %d\n", result);
+    exit(1);
+  }
+
+  printf("Attempted to read %d byte(s) of %d byte file.\n"
+               "Read %d byte(s) of file:\n",
+               bytes_to_read, file_size, num_bytes_read);
+  for (int i = 0; i < num_bytes_read; i++) {
+    printf("%c", buf[i]);
+  }
+  printf("\n");
+  if (bytes_to_read != num_bytes_read) {
+    exit(1);
+  }
+  // Check end of buffer hasn't been overwritten
+  for (int i = bytes_to_read; i < BUFFER_SIZE; i++) {
+    if (buf[i] != (uint8_t)BUFFER_PATTERN) {
+      printf("Unexpected write to buffer at index %d, "
+                   "found %x, expected %x!\n",
+                   i, buf[i], (uint8_t)BUFFER_PATTERN);
+    }
+  }
+
+  printf("Seeking back to beginning of file...\n");
+  result = i_fs.seek(0, 1);
+  if (result != FS_RES_OK) {
+    printf("result = %d\n", result);
+    exit(1);
+  }
+
 	unsigned data_file_size = sizeof(MP3_ARRAY_NAME);
 	unsigned index = 0; //How far through the file we have gone
+
+	printf("Loading mp3 file %s\n", filename);
+
+	memset(MP3_ARRAY_NAME, 0, data_file_size);
+	for (int i=0; i<250; i++) {
+		unsigned char tmp_buff[512];
+	  result = i_fs.read(tmp_buff, 512, 512, num_bytes_read);
+	  if (result != FS_RES_OK) {
+	    printf("result = %d\n", result);
+	    exit(1);
+	  }
+		printintln((i * 512));
+	  memcpy(MP3_ARRAY_NAME + (i * 512), tmp_buff, 512);
+	}
+  
+
 
 	printint(data_file_size);
 	while(data_file_size){
@@ -217,33 +316,46 @@ void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast) {
 }
 
 int main(void) {
-	unsigned duties[PWM_PORT_BITS_N] = {10, 255, 0, 100};
-	volatile unsigned * unsafe duties_ptr;
-
 	i_buttons_t i_buttons;
 	i_quadrature_t i_quadrature;
 	i_resistor_t i_resistor;
 	streaming chan c_pwm_fast;
 	streaming chan c_mp3_chan;
 	chan c_pcm_chan;
-
-	unsafe{ duties_ptr = duties;}
-
+	interface fs_basic_if i_fs[1];
+  interface fs_storage_media_if i_media;
 
 	par {
-		[[combine]] par {
-			pwm_wide_unbuffered(p_leds, PWM_PORT_BITS_N, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, duties_ptr);
-			port_input_debounced(p_butt, 4, i_buttons);
-			quadrature(p_quadrature, i_quadrature);
+  	on tile[0]: {
+  		unsigned duties[PWM_PORT_BITS_N] = {10, 255, 0, 100};
+			volatile unsigned * unsafe duties_ptr;
+			unsafe{ duties_ptr = duties;}
+		  fl_QuadDeviceSpec qspi_spec = FL_QUADDEVICE_ISSI_IS25LQ016B;	//What we have on the explorer board
+		  //fl_QuadDeviceSpec qspi_spec = FL_QUADDEVICE_SPANSION_S25FL116K;	//What we have on the explorer board
+
+			par {			
+				[[combine]] par {
+					pwm_wide_unbuffered(p_leds, PWM_PORT_BITS_N, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, duties_ptr);
+					port_input_debounced(p_butt, 4, i_buttons);
+					quadrature(p_quadrature, i_quadrature);
+				}
+				app(4, i_buttons, duties, i_quadrature, i_resistor);
+
+				//resistor_reader(p_adc, i_resistor);
+
+				qspi_flash_fs_media(i_media, qspi_flash_ports, qspi_spec, 512);
+		    filesystem_basic(i_fs, 1, FS_FORMAT_FAT12, i_media);
+
+				mp3_player(i_fs[0], c_mp3_chan);
+				decoderMain(c_pcm_chan, c_mp3_chan);
+				pcm_post_process(c_pcm_chan, c_pwm_fast);
+				pwm_fast(c_pwm_fast, p_pwm_fast);
+			}
 		}
-		app(4, i_buttons, duties, i_quadrature, i_resistor);
+		on tile[1]: {
 
-		//resistor_reader(p_adc, i_resistor);
+		}
 
-		mp3_player(c_mp3_chan);
-		decoderMain(c_pcm_chan, c_mp3_chan);
-		pcm_post_process(c_pcm_chan, c_pwm_fast);
-		pwm_fast(c_pwm_fast, p_pwm_fast);
 
 	}
 	return 0;

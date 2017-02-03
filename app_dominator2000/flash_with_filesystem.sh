@@ -1,0 +1,1 @@
+xflash --boot-partition-size 262144 --data ../mp3media/mp3_flash_image.bin bin/app_dominator2000.xe
