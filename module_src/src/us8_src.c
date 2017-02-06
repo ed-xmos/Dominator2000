@@ -34,9 +34,9 @@ void src_init(src_ctrl_t *src_ctrl)
     src_ctrl->inner_loops[1] = STAGE_1_FIR_LENGTH / 2;
     src_ctrl->inner_loops[2] = STAGE_2_FIR_LENGTH / 2;
 
-    src_ctrl->num_coeffs[0] = STAGE_0_FIR_LENGTH;
-    src_ctrl->num_coeffs[1] = STAGE_1_FIR_LENGTH;
-    src_ctrl->num_coeffs[2] = STAGE_2_FIR_LENGTH;
+    src_ctrl->num_coeffs[0] = STAGE_0_FIR_LENGTH / 2;
+    src_ctrl->num_coeffs[1] = STAGE_1_FIR_LENGTH / 2;
+    src_ctrl->num_coeffs[2] = STAGE_2_FIR_LENGTH / 2;
 
     src_ctrl->coeffs[0] = (int *) stage_0_fir_coefs;
     src_ctrl->coeffs[1] = (int *) stage_1_fir_coefs;
@@ -67,14 +67,14 @@ void src_process(int in_samp, int out_buff[], src_ctrl_t *src_ctrl){
         if ((unsigned)delay_base & 0b0100) {
             src_fir_inner_loop_asm_odd(
                  src_ctrl->delay_base[0] + src_ctrl->delay_idx[0]
-                ,src_ctrl->coeffs[0] + (src_ctrl->phase[0] * (src_ctrl->num_coeffs[0] / 2)) //Polyphase bit
+                ,src_ctrl->coeffs[0] + (src_ctrl->phase[0] * src_ctrl->num_coeffs[0]) //Polyphase bit
                 ,&stage_0_out[i]
                 ,src_ctrl->inner_loops[0] >> 1);
         }
         else {
             src_fir_inner_loop_asm(
                  src_ctrl->delay_base[0] + src_ctrl->delay_idx[0]
-                ,src_ctrl->coeffs[0] + (src_ctrl->phase[0] * (src_ctrl->num_coeffs[0] / 2)) //Polyphase bit
+                ,src_ctrl->coeffs[0] + (src_ctrl->phase[0] * src_ctrl->num_coeffs[0]) //Polyphase bit
                 ,&stage_0_out[i]
                 ,src_ctrl->inner_loops[0] >> 1);
         }
@@ -98,13 +98,13 @@ void src_process(int in_samp, int out_buff[], src_ctrl_t *src_ctrl){
         if ((unsigned)delay_base & 0b0100) {
             src_fir_inner_loop_asm_odd(
              delay_base
-            ,src_ctrl->coeffs[1] + (src_ctrl->phase[1] * (src_ctrl->num_coeffs[1] / 2)) //Polyphase bit
+            ,src_ctrl->coeffs[1] + (src_ctrl->phase[1] * src_ctrl->num_coeffs[1]) //Polyphase bit
             ,&stage_1_out[i]
             ,src_ctrl->inner_loops[1] >> 1);}
         else {
             src_fir_inner_loop_asm(
              delay_base
-            ,src_ctrl->coeffs[1] + (src_ctrl->phase[1] * (src_ctrl->num_coeffs[1] / 2)) //Polyphase bit
+            ,src_ctrl->coeffs[1] + (src_ctrl->phase[1] * src_ctrl->num_coeffs[1]) //Polyphase bit
             ,&stage_1_out[i]
             ,src_ctrl->inner_loops[1] >> 1);
         }
@@ -128,14 +128,14 @@ void src_process(int in_samp, int out_buff[], src_ctrl_t *src_ctrl){
         if ((unsigned)delay_base & 0b0100) {
             src_fir_inner_loop_asm_odd(
                  src_ctrl->delay_base[2] + src_ctrl->delay_idx[2]
-                ,src_ctrl->coeffs[2] + (src_ctrl->phase[2] * (src_ctrl->num_coeffs[2] / 2)) //Polyphase bit
+                ,src_ctrl->coeffs[2] + (src_ctrl->phase[2] * src_ctrl->num_coeffs[2]) //Polyphase bit
                 ,&out_buff[i]
                 ,src_ctrl->inner_loops[2] >> 1);
         }
         else {
             src_fir_inner_loop_asm(
                  src_ctrl->delay_base[2] + src_ctrl->delay_idx[2]
-                ,src_ctrl->coeffs[2] + (src_ctrl->phase[2] * (src_ctrl->num_coeffs[2] / 2)) //Polyphase bit
+                ,src_ctrl->coeffs[2] + (src_ctrl->phase[2] * src_ctrl->num_coeffs[2]) //Polyphase bit
                 ,&out_buff[i]
                 ,src_ctrl->inner_loops[2] >> 1);
         }

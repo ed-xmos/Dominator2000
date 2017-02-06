@@ -12,7 +12,7 @@ def plot_response(fs, w, h, title):
     plt.xlabel('Frequency (Hz)')
     plt.ylabel('Gain (dB)')
     plt.title(title)
-    #plt.show()
+    plt.show()
 
 def plot_response_passband(fs, w, h, title):
     plt.figure()
@@ -30,7 +30,7 @@ def make_filter(fs, transition_low, transition_high, numtaps, name):
     taps = signal.remez(numtaps, [0, transition_low, transition_high, 0.5*fs], [1, 0], weight=[.01, 1], Hz=fs)
     w, h = signal.freqz(taps)
     plot_response(fs, w, h, "Low-pass Filter")
-    plot_response_passband(fs, w, h, "Low-pass Filter")
+    #plot_response_passband(fs, w, h, "Low-pass Filter")
 
     pass_band_atten = sum(abs(taps))
 
@@ -71,16 +71,16 @@ content = make_filter(fs, transition_low, transition_high, numtaps, name)
 # Low-pass filter design parameters
 fs = 192000.0        # Sample rate, Hz
 numtaps = 16 * 2    # Size of the FIR filter.
-transition_low = fs / 2 * 0.45
-transition_high = fs / 2 * 0.55
+transition_low = fs / 4 * 0.45
+transition_high = fs / 4 * 0.55
 name = "stage_1_fir"
 content += make_filter(fs, transition_low, transition_high, numtaps, name)
 
 # Low-pass filter design parameters
 fs = 384000.0        # Sample rate, Hz
 numtaps = 16 * 2    # Size of the FIR filter.
-transition_low = fs / 2 * 0.45
-transition_high = fs / 2 * 0.55
+transition_low = fs / 8 * 0.45
+transition_high = fs / 8 * 0.55
 name = "stage_2_fir"
 content += make_filter(fs, transition_low, transition_high, numtaps, name)
 
