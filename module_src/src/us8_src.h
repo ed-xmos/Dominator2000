@@ -27,15 +27,18 @@ typedef struct src_ctrl_t
  *  \param   n_in_samples             Number of input samples per SSRC call
  *  \param   dither_on_off            Dither to 24b on/off
  */
-void src_init(src_ctrl_t src_ctrl[]);
+void src_init(src_ctrl_t *src_ctrl);
 
 /** Perform synchronous sample rate conversion processing on block of input samples using previously initialized settings.
  *
  *  \param   in_buff          Reference to input sample buffer array
  *  \param   out_buff         Reference to output sample buffer array
- *  \param   ssrc_ctrl        Reference to array of SSRC control stuctures
- *  \returns The number of output samples produced by the SRC operation
+ *  \param   ssrc_ctrl        Reference to SRC control stucture
  */
-unsigned src_process(int in_samp, int out_buff[], src_ctrl_t src_ctrl[]);
+void src_process(int in_samp, int out_buff[], src_ctrl_t *src_ctrl);
+
+#if defined(__cplusplus) || defined(__XC__)
+}
+#endif
 
 #endif // _SRC_H_

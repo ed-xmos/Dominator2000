@@ -1,3 +1,6 @@
 app_dominator2000/bin
 trace.vcd
 *.xmt
+dump.txt
+*.xe
+mp3_flash_image.bin

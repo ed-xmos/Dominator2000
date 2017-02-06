@@ -12,6 +12,7 @@ def plot_response(fs, w, h, title):
     plt.xlabel('Frequency (Hz)')
     plt.ylabel('Gain (dB)')
     plt.title(title)
+    #plt.show()
 
 def plot_response_passband(fs, w, h, title):
     plt.figure()
@@ -24,34 +25,64 @@ def plot_response_passband(fs, w, h, title):
     plt.title(title)
 
 
+def make_filter(fs, transition_low, transition_high, numtaps, name):
+    interpolation_factor = 2
+    taps = signal.remez(numtaps, [0, transition_low, transition_high, 0.5*fs], [1, 0], weight=[.01, 1], Hz=fs)
+    w, h = signal.freqz(taps)
+    plot_response(fs, w, h, "Low-pass Filter")
+    plot_response_passband(fs, w, h, "Low-pass Filter")
+
+    pass_band_atten = sum(abs(taps))
+
+    taps = taps / pass_band_atten    # Guarantee no overflow
+
+    q = 31 -int(np.log2(pass_band_atten) + 0.5)
+    content = '#define ' + name.upper() + "_LENGTH  " + str(numtaps) + '\n'
+    content += 'const unsigned ' + name + '_comp_q = ' + str(q) + ';\n'
+    content += 'const int ' + name + '_comp = ' + str(int(((2**q)-1) * pass_band_atten)) + ';\n'
+
+    content += 'int ' + name + '_coefs_debug[' + str(numtaps) + '] = {\n'
+    for c in taps:
+        c = int(c*(2**31 - 1))
+        content += str(c) + ',\n '
+    content += '};\n'
+
+    content +=  'const int ' + name + '_coefs[' + str(interpolation_factor) + '][' + str(numtaps/interpolation_factor)+ '] = {\n'
+    for step in range(interpolation_factor - 1, -1, -1):
+        content +=  '\t{\n'
+        for i in range(step, len(taps), interpolation_factor):
+            c = int(taps[i]*(2**31 - 1))
+            content +=  '\t' + str(c) + ',\n'
+        content +=  '\t},\n'
+    content +=  '};\n\n'
+    return content
+
+
+include_file = open("src/coeffs.h", "w")
+
 # Low-pass filter design parameters
-fs = 48000.0        # Sample rate, Hz
-numtaps = 12*2*3    # Size of the FIR filter.
+fs = 96000.0        # Sample rate, Hz
+numtaps = 32 * 2    # Size of the FIR filter.
+transition_low = fs / 2 * 0.45
+transition_high = fs / 2 * 0.55
+name = "stage_0_fir"
+content = make_filter(fs, transition_low, transition_high, numtaps, name)
 
-taps = signal.remez(numtaps, [0, 7300, 8700, 0.5*fs], [1, 0], [.008, 1], Hz=fs)
-w, h = signal.freqz(taps)
-#plot_response(fs, w, h, "Low-pass Filter")
-#plot_response_passband(fs, w, h, "Low-pass Filter")
+# Low-pass filter design parameters
+fs = 192000.0        # Sample rate, Hz
+numtaps = 16 * 2    # Size of the FIR filter.
+transition_low = fs / 2 * 0.45
+transition_high = fs / 2 * 0.55
+name = "stage_1_fir"
+content += make_filter(fs, transition_low, transition_high, numtaps, name)
 
-pass_band_atten = sum(abs(taps))
+# Low-pass filter design parameters
+fs = 384000.0        # Sample rate, Hz
+numtaps = 16 * 2    # Size of the FIR filter.
+transition_low = fs / 2 * 0.45
+transition_high = fs / 2 * 0.55
+name = "stage_2_fir"
+content += make_filter(fs, transition_low, transition_high, numtaps, name)
 
-taps = taps / pass_band_atten    # Guarantee no overflow
-
-q = 31 -int(np.log2(pass_band_atten) + 0.5)
-print 'const unsigned src_s0_fir_comp_q = ' + str(q) + ';'
-print 'const int32_t src_s0_fir_comp =' + str(int(((2**q)-1) * pass_band_atten)) + ';'
-
-print 'int32_t src_ff3v_fir_coefs_debug[72] = {'
-for c in taps:
-    c = int(c*(2**31 - 1))
-    print str(c) + ', '
-print '};'
-
-print 'const int32_t src_ff3v_fir_coefs[3][24] = {'
-for step in range(2, -1, -1):
-    print '\t{'
-    for i in range(step, len(taps), 3):
-        c = int(taps[i]*(2**31 - 1))
-        print '\t' + str(c) + ','
-    print '\t},'
-print '};'
+include_file.write(content)
+include_file.close()
