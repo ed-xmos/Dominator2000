@@ -63,8 +63,8 @@ include_file = open("src/coeffs.h", "w")
 # Low-pass filter design parameters
 fs = 96000.0        # Sample rate, Hz
 numtaps = 32 * 2    # Size of the FIR filter.
-transition_low = fs / 2 * 0.41
-transition_high = fs / 2 * 0.51
+transition_low = fs / 2 * 0.42
+transition_high = fs / 2 * 0.52
 name = "stage_0_fir"
 weight=[.2, .8]
 content = make_filter(fs, transition_low, transition_high, numtaps, name, weight)
@@ -72,8 +72,8 @@ content = make_filter(fs, transition_low, transition_high, numtaps, name, weight
 # Low-pass filter design parameters
 fs = 192000.0        # Sample rate, Hz
 numtaps = 16 * 2    # Size of the FIR filter.
-transition_low = fs / 4 * 0.41
-transition_high = fs / 4 * 0.51
+transition_low = fs / 4 * 0.57
+transition_high = fs / 4 * 1.35
 name = "stage_1_fir"
 weight=[.2, 8]
 content += make_filter(fs, transition_low, transition_high, numtaps, name, weight)
@@ -81,8 +81,8 @@ content += make_filter(fs, transition_low, transition_high, numtaps, name, weigh
 # Low-pass filter design parameters
 fs = 384000.0        # Sample rate, Hz
 numtaps = 16 * 2    # Size of the FIR filter.
-transition_low = fs / 4 * 0.41
-transition_high = fs / 4 * 0.51
+transition_low = fs / 8 * 0.57
+transition_high = fs / 8 * 1.35
 name = "stage_2_fir"
 weight=[.4, .6]
 content += make_filter(fs, transition_low, transition_high, numtaps, name, weight)
