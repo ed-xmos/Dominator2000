@@ -185,45 +185,27 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan)
     exit(1);
   }
 
-	unsigned data_file_size = sizeof(MP3_ARRAY_NAME);
-	unsigned index = 0; //How far through the file we have gone
 
 	printf("Loading mp3 file %s\n", filename);
-
-	memset(MP3_ARRAY_NAME, 0, data_file_size);
-	for (int i=0; i<250; i++) {
-		unsigned char tmp_buff[512];
-	  result = i_fs.read(tmp_buff, 512, 512, num_bytes_read);
-	  if (result != FS_RES_OK) {
-	    printf("result = %d\n", result);
-	    exit(1);
-	  }
-		printintln((i * 512));
-	  memcpy(MP3_ARRAY_NAME + (i * 512), tmp_buff, 512);
-	}
   
 
-
-	printint(data_file_size);
-	while(data_file_size){
-		unsigned data_size_this_frame;
-		if (data_file_size > MP3_DATA_TRANSFER_SIZE) {
-			data_size_this_frame = MP3_DATA_TRANSFER_SIZE;
-			data_file_size -= MP3_DATA_TRANSFER_SIZE;
-		}
-		else {
-			data_size_this_frame = data_file_size;
-			data_file_size = 0;
-		}
-  	c_mp3_chan <: data_size_this_frame;
-  	sout_char_array(c_mp3_chan, &MP3_ARRAY_NAME[index], data_size_this_frame);
+	unsigned char tmp_buff[512];
+	unsigned index = 0; //How far through the file we have gone
+	num_bytes_read = !0;
+	while(num_bytes_read){
+		result = i_fs.read(tmp_buff, 512, 512, num_bytes_read);
+	  if (result != FS_RES_OK) {
+	    printf("File read error: %d\n", result);
+	    exit(1);
+	  }
+  	c_mp3_chan <: num_bytes_read;
+  	sout_char_array(c_mp3_chan, tmp_buff, num_bytes_read);
 		printintln(index);
-		index += data_size_this_frame;
+		index += num_bytes_read;
 	}
 	c_mp3_chan <: 0xDEADBEEF;
 	printstrln("MP3 player sent terminate\n");
 
-	//printstrln("MP3 player NOT sent terminate\n");
 
 }
 
