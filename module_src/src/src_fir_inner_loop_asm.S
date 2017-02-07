@@ -21,7 +21,7 @@ src_fir_inner_loop_asm:
 #define Acc0_l              r8
 #define Acc0_h              r9
 
-#define Q                   31
+#define Q                   30
 
 
 //In 32b words
@@ -35,8 +35,8 @@ src_fir_inner_loop_asm:
     std r8, r9, sp[2]
 
     //push return value pointers onto stack. Frees up r2
-    //Divide counter by 8
-    {stw iDataRet_p, sp[6]; shr counter, counter, 3}
+    //Divide counter by 16 as we do 8 iterations * 2
+    {stw iDataRet_p, sp[6]; shr counter, counter, 4}
 
     //Constant for adding onto stuff. Gets updated later
     ldc step, 0x40
@@ -159,8 +159,8 @@ src_fir_inner_loop_asm_odd:
     std r8, r9, sp[2]
 
     //push return value pointer onto stack. Frees up r2
-    //Divide counter by 8
-    {stw iDataRet_p, sp[6]; shr counter, counter, 3}
+    //Divide counter by 16
+    {stw iDataRet_p, sp[6]; shr counter, counter, 4}
 
     //Initilise MACC regsiters to zero
     {ldc Acc0_h, 0; ldc Acc0_l, 0}
