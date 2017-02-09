@@ -19,14 +19,7 @@ typedef struct src_ctrl_t
 } src_ctrl_t;
 
 
-/** Initialises synchronous sample rate conversion instance.
- *  \param   sr_in                    Nominal sample rate code of input stream
- *  \param   sr_out                   Nominal sample rate code of output stream
- *  \param   ssrc_ctrl                Reference to array of SSRC control stuctures
- *  \param   n_channels_per_instance  Number of channels handled by this instance of SSRC
- *  \param   n_in_samples             Number of input samples per SSRC call
- *  \param   dither_on_off            Dither to 24b on/off
- */
+/** Initialises synchronous sample rate conversion instance.**/
 void src_init(src_ctrl_t *src_ctrl);
 
 /** Perform synchronous sample rate conversion processing on block of input samples using previously initialized settings.

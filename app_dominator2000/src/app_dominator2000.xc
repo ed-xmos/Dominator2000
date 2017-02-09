@@ -11,6 +11,7 @@
 #include "resistor.h"
 #include "pwm_fast.h"
 #include "decode_main.h"
+#include "us8_src.h"
 
 #include "filesystem.h"
 #include "qspi_flash_storage_media.h"
@@ -103,19 +104,13 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 }
 
 
-#include "malibu_diet.h"
-#include "sine_left.h"
-#define MP3_ARRAY_NAME	malibu_diet_stripped_mp3
-//#define MP3_ARRAY_NAME	__8khz_250ms_left_44Khz_mp3
-
+//#include "sine_left.h"
 #define MP3_DATA_TRANSFER_SIZE	1500 //Must be bigger than one frame (417B)
 
 
 #define BUFFER_SIZE      50
 #define PARTIAL_READ_LEN 5
 #define BUFFER_PATTERN   0xAAAAAAAA
-
-unsigned malibu_idx = 0;
 
 void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan) {
 
@@ -129,7 +124,7 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan)
   }
 
   printf("Opening file...\n");
-  char filename[] = "HNDCLP.MP3";
+  char filename[] = "MALIBU.MP3";
   result = i_fs.open(filename, sizeof(filename));
   if (result != FS_RES_OK) {
     printf("result = %d\n", result);
@@ -209,7 +204,31 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan)
 
 }
 
-void src(short * input_array, unsigned n_in_samples, unsigned char * output_array ) {
+static inline void noise_shape(int * input_array, unsigned n_in_samples, unsigned char * output_array ) {
+		static int carry = 0;
+		for (int i = 0; i < n_in_samples; i++){
+			int sample = input_array[i];
+			if (sample > 0x7f000000) sample = 0x7f000000; //Clip
+			sample += carry;
+			char sample_byte;
+			sample_byte = sample >> 24;
+			carry = sample - (sample_byte << 24);
+			unsigned char duty = (unsigned char)(sample_byte + 128);
+			output_array[i] = duty;
+		}
+}
+
+static inline void src(short * input_array, unsigned n_in_samples, unsigned char * output_array, src_ctrl_t *src_ctrl ) {
+	int post_src_array[UPSAMPLE_RATIO];
+	for (int i = 0; i < n_in_samples; i++){
+		unsigned out_idx = i * UPSAMPLE_RATIO;
+		int sample = (int)input_array[i] << 16;
+		src_process(sample, post_src_array, src_ctrl);
+		noise_shape(post_src_array, n_in_samples, output_array);
+	}
+}
+
+void src_simple(short * input_array, unsigned n_in_samples, unsigned char * output_array ) {
 	for (int i = 0; i < n_in_samples; i++){
 		unsigned out_idx = i * UPSAMPLE_RATIO;
 		short sample = input_array[i];
@@ -236,6 +255,9 @@ void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast) {
 
 	unsigned total_samps_this_frame = 0;
 	unsigned total_duties = 0;
+
+	src_ctrl_t src_ctrl;
+	src_init(&src_ctrl);
 
 	c_pwm_fast :> int _; //Consume ready token
 
@@ -279,7 +301,7 @@ void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast) {
   					//printstr("Ready for SRC\n");
   					//for(int i = 0; i < total_samps_this_frame; i++) {printint(sample_buff[i]); printstr(", ");} printstrln("");
 	          //Do SRC
-	          src(sample_buff, total_samps_this_frame, duty_dbl_buff[duty_dbl_buff_idx]);
+	          src_simple(sample_buff, total_samps_this_frame, duty_dbl_buff[duty_dbl_buff_idx]);
 
 	          c_pwm_fast :> int _; //Synch - wait for PWM to say it's ready
 	          unsigned duty_count = total_samps_this_frame * UPSAMPLE_RATIO;
@@ -312,7 +334,7 @@ int main(void) {
   		unsigned duties[PWM_PORT_BITS_N] = {10, 255, 0, 100};
 			volatile unsigned * unsafe duties_ptr;
 			unsafe{ duties_ptr = duties;}
-		  fl_QuadDeviceSpec qspi_spec = FL_QUADDEVICE_ISSI_IS25LQ016B;	//What we have on the explorer board
+		  fl_QuadDeviceSpec qspi_spec = FL_QUADDEVICE_ISSI_IS25LQ016B;	//What we actually have on the explorer board
 		  //fl_QuadDeviceSpec qspi_spec = FL_QUADDEVICE_SPANSION_S25FL116K;	//What we have on the explorer board
 
 			par {			

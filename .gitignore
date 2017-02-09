@@ -4,3 +4,6 @@ trace.vcd
 dump.txt
 *.xe
 mp3_flash_image.bin
+decompressor*
+spanning*
+target*

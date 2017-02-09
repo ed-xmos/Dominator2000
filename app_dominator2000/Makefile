@@ -21,7 +21,7 @@ XCC_FLAGS = -Wall -Os -g -report -lquadflash
 #-DUNSAFE_LIBC
 
 # The USED_MODULES variable lists other module used by the application. 
-USED_MODULES = module_buttons module_pwm_wide module_quadrature_encoder module_resistor_read module_pwm_fast module_mp3 lib_filesystem
+USED_MODULES = module_buttons module_pwm_wide module_quadrature_encoder module_resistor_read module_pwm_fast module_mp3 lib_filesystem module_src
 
 
 sim: bin/app_dominator2000.xe
