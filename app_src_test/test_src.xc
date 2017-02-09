@@ -26,7 +26,7 @@ int main(void){
 	}
 
 	for (int i=0; i<N_ITERATIONS*8; i++) {
-		printf("%d\n", output[i]);
+		printf("%d\n", output[i]<<2);
 	}
 
 	return 0;

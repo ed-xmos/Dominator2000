@@ -204,10 +204,12 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan)
 
 }
 
+#pragma unsafe arrays
 static inline void noise_shape(int * input_array, unsigned n_in_samples, unsigned char * output_array ) {
 		static int carry = 0;
 		for (int i = 0; i < n_in_samples; i++){
 			int sample = input_array[i];
+			sample <<= 2;	//FIR gain compensation
 			if (sample > 0x7f000000) sample = 0x7f000000; //Clip
 			sample += carry;
 			char sample_byte;
@@ -218,13 +220,14 @@ static inline void noise_shape(int * input_array, unsigned n_in_samples, unsigne
 		}
 }
 
+#pragma unsafe arrays
 static inline void src(short * input_array, unsigned n_in_samples, unsigned char * output_array, src_ctrl_t *src_ctrl ) {
 	int post_src_array[UPSAMPLE_RATIO];
 	for (int i = 0; i < n_in_samples; i++){
 		unsigned out_idx = i * UPSAMPLE_RATIO;
 		int sample = (int)input_array[i] << 16;
 		src_process(sample, post_src_array, src_ctrl);
-		noise_shape(post_src_array, n_in_samples, output_array);
+		noise_shape(post_src_array, UPSAMPLE_RATIO, &output_array[out_idx]);
 	}
 }
 
@@ -301,7 +304,9 @@ void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast) {
   					//printstr("Ready for SRC\n");
   					//for(int i = 0; i < total_samps_this_frame; i++) {printint(sample_buff[i]); printstr(", ");} printstrln("");
 	          //Do SRC
-	          src_simple(sample_buff, total_samps_this_frame, duty_dbl_buff[duty_dbl_buff_idx]);
+	          //src_simple(sample_buff, total_samps_this_frame, duty_dbl_buff[duty_dbl_buff_idx]);
+						src(sample_buff, total_samps_this_frame, duty_dbl_buff[duty_dbl_buff_idx], &src_ctrl);
+
 
 	          c_pwm_fast :> int _; //Synch - wait for PWM to say it's ready
 	          unsigned duty_count = total_samps_this_frame * UPSAMPLE_RATIO;

@@ -64,7 +64,7 @@ void src_process(int in_samp, int out_buff[], src_ctrl_t *src_ctrl){
 
     for (int i=0; i<2; i++) {
         //Do the FIR
-        //printintln(insamp);
+        //printintln(in_samp);
         //printintln(src_ctrl->inner_loops[0]);
         if ((unsigned)delay_base & 0b0100) {
             src_fir_inner_loop_asm_odd(
