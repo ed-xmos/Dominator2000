@@ -1,1 +1,1 @@
-../../lib_filesystem/lib_filesystem/disk_image_creators/fat/fat_image_creator mp3_flash_image.bin media/malibu.mp3 media/hndclp.mp3
+../../lib_filesystem/lib_filesystem/disk_image_creators/fat/fat_image_creator mp3_flash_image.bin media/funk.mp3 media/lightsbr.mp3

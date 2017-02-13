@@ -243,6 +243,7 @@ void PolyphaseMono(short *pcm, int *vbuf, const int *coefBase, chanend pcmChan)
  * TODO:        add 32-bit version for platforms where 64-bit mul-acc is not supported
  **************************************************************************************/
 
+#define STEREO_FLAG	0x80		//Set upper bit of first byte if stereo
 void PolyphaseStereo(short *pcm, int *vbuf, const int *coefBase, chanend pcmChan)
 {
 	#if 1
@@ -253,7 +254,7 @@ void PolyphaseStereo(short *pcm, int *vbuf, const int *coefBase, chanend pcmChan
 	Word64 sum1L, sum2L, sum1R, sum2R, rndVal;
 	
 	// PCM index for channel
-	int pcmIdx = 0;
+	int pcmIdx = STEREO_FLAG;
 
 	rndVal = (Word64)( 1 << (DEF_NFRACBITS - 1 + (32 - CSHIFT)) );
 
