@@ -56,6 +56,9 @@ int decoderMain(chanend pcmChan, streaming_chanend_t rxChan, chanend c_mp3_stop)
 				bytesLeft += nRead;
 				tot_bytes += nRead;
 				//printf("bytesLeft: %d\n", bytesLeft);
+				int stop;
+				check_for_stop(&stop, c_mp3_stop);
+				if (stop) break;
 			}
 		} while (end_of_stream && bytesLeft < 16384);
 		end_of_stream = 0;

@@ -248,13 +248,14 @@ int MP3GetNextFrameInfo(HMP3Decoder hMP3Decoder, MP3FrameInfo *mp3FrameInfo, uns
  *
  * Return:      none
  **************************************************************************************/
+#define BAD_FRAME	0x0100
 static void MP3ClearBadFrame(MP3DecInfo *mp3DecInfo, chanend pcmChan)
 {
 	if (!mp3DecInfo)
 		return;
 
 	//__builtin_trap();
-	//OutputToPCMBuf(mp3DecInfo->nGrans * mp3DecInfo->nGranSamps * mp3DecInfo->nChans, 0xffff, pcmChan);
+	OutputToPCMBuf(mp3DecInfo->nGrans * mp3DecInfo->nGranSamps * mp3DecInfo->nChans, BAD_FRAME, pcmChan);
 }
 
 /**************************************************************************************

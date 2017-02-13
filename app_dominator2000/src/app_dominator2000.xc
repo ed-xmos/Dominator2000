@@ -172,6 +172,18 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
 		    printf("File read error: %d\n", result);
 		    exit(1);
 		  }
+
+	  	c_mp3_chan <: num_bytes_read;
+	  	sout_char_array(c_mp3_chan, tmp_buff, num_bytes_read);
+			//printintln(index);
+			index += num_bytes_read;
+#if 0
+			if (index > 30000){
+				result = i_fs.seek(0, 1);
+				index = 0;
+				c_mp3_stop <: 1;
+			}
+#endif
 		 	//This polls so we only do if needed
 		 	select {
 				case i_mp3_player.play_file(char new_filename[], size_t n):
@@ -190,18 +202,6 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
 				default:
 					break;
 			}
-
-	  	c_mp3_chan <: num_bytes_read;
-	  	sout_char_array(c_mp3_chan, tmp_buff, num_bytes_read);
-			//printintln(index);
-			index += num_bytes_read;
-#if 0
-			if (index > 30000){
-				result = i_fs.seek(0, 1);
-				index = 0;
-				c_mp3_stop <: 1;
-			}
-#endif
 		}
 		c_mp3_chan <: 0xDEADBEEF;
 		printstrln("MP3 player sent terminate\n");
@@ -272,7 +272,7 @@ void src_simple(short * input_array, unsigned n_in_samples, unsigned char * outp
 
 unsigned char pwm_test[] = { 0 , 10, 20, 30, 40, 50, 60, 70, 80, 90 , 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250};
 //MP3 pcm value set upper bit of first byte of index if stereo
-#define STEREO_FLAG	0x80		
+#define STEREO_FLAG	0x80	
 void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast) {
 
 	short sample_buff[MP3_PCM_FRAME_SIZE];		//Stereo = 32x l+r words
