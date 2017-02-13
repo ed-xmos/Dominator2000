@@ -32,6 +32,11 @@ fl_QSPIPorts qspi_flash_ports = {
   on tile[0]: XS1_CLKBLK_1
 };
 
+typedef interface i_mp3_player_t {
+	void play_file(char filename[], size_t len_filename);
+	//void set_volume(int volume_pc);
+} i_mp3_player_t;
+
 on tile[0]: out port p_leds = XS1_PORT_4F;
 on tile[0]: in port p_butt = XS1_PORT_4E;
 on tile[0]: port p_adc = XS1_PORT_1I;
@@ -45,7 +50,7 @@ on tile[0]: in port p_quadrature[2] = {XS1_PORT_1G, XS1_PORT_1H};
 
 [[combinable]]
 void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned duties[PWM_PORT_BITS_N],
-	client i_quadrature_t i_quadrature, client i_resistor_t i_resistor) {
+	client i_quadrature_t i_quadrature, client i_resistor_t i_resistor, client i_mp3_player_t i_mp3_player) {
 	button_event_t button_event[MAX_INPUT_PORT_BITS] = {0};
 	duties[0] = 0;
 	duties[1] = 0;
@@ -70,9 +75,13 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 				}
 				if ((button_event[0] == BUTTON_PRESSED) && led_index < 3) {
 					led_index++;
+					char funk[] = "FUNK.MP3";
+					i_mp3_player.play_file(funk, strlen(funk) + 1);
 				}
 				if ((button_event[1] == BUTTON_PRESSED) && led_index > 0) {
 					led_index--;
+					char lightsbr[] = "LIGHTSBR.MP3";
+					i_mp3_player.play_file(lightsbr, strlen(lightsbr) + 1);
 				}
 				break;
 
@@ -112,9 +121,13 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 #define PARTIAL_READ_LEN 5
 #define BUFFER_PATTERN   0xAAAAAAAA
 
-void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan, chanend c_mp3_stop) {
+void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan, chanend c_mp3_stop
+	,server i_mp3_player_t i_mp3_player) {
 
   fs_result_t result;
+  //This is DOS 8.3 so 16 enough..
+  char filename[16] = "LIGHTSBR.MP3";	//Startup sound
+
 
 	printf("Mounting filesystem...\n");
   result = i_fs.mount();
@@ -123,100 +136,94 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
     exit(1);
   }
 
-  printf("Opening file...\n");
-  char filename2[] = "FUNK.MP3"; 
-  char filename[] = "LIGHTSBR.MP3";
-  result = i_fs.open(filename, sizeof(filename));
-  if (result != FS_RES_OK) {
-    printf("result = %d\n", result);
-    exit(1);
-  }
-
-  printf("Getting file size...\n");
-  size_t file_size;
-  result = i_fs.size(file_size);
-  if (result != FS_RES_OK) {
-    printf("result = %d\n", result);
-    exit(1);
-  }
-
-  uint8_t buf[BUFFER_SIZE];
-
-  printf("Reading part of file...\n");
-  if(file_size < PARTIAL_READ_LEN) printf("Partial read length exceeds file size!\n");
-  size_t bytes_to_read = 0;
-  size_t num_bytes_read = 0;
-  // Init buffer with pattern
-  memset(buf, BUFFER_PATTERN, BUFFER_SIZE);
-  bytes_to_read = PARTIAL_READ_LEN;
-  result = i_fs.read(buf, sizeof(buf), bytes_to_read, num_bytes_read);
-  if (result != FS_RES_OK) {
-    printf("result = %d\n", result);
-    exit(1);
-  }
-
-  printf("Attempted to read %d byte(s) of %d byte file.\n"
-               "Read %d byte(s) of file:\n",
-               bytes_to_read, file_size, num_bytes_read);
-  for (int i = 0; i < num_bytes_read; i++) {
-    printf("%c", buf[i]);
-  }
-  printf("\n");
-  if (bytes_to_read != num_bytes_read) {
-    exit(1);
-  }
-  // Check end of buffer hasn't been overwritten
-  for (int i = bytes_to_read; i < BUFFER_SIZE; i++) {
-    if (buf[i] != (uint8_t)BUFFER_PATTERN) {
-      printf("Unexpected write to buffer at index %d, "
-                   "found %x, expected %x!\n",
-                   i, buf[i], (uint8_t)BUFFER_PATTERN);
-    }
-  }
-
-  printf("Seeking back to beginning of file...\n");
-  result = i_fs.seek(0, 1);
-  if (result != FS_RES_OK) {
-    printf("result = %d\n", result);
-    exit(1);
-  }
-
-
-	printf("Loading mp3 file %s\n", filename);
-  
-
-	unsigned char tmp_buff[512];
-	unsigned index = 0; //How far through the file we have gone
-	num_bytes_read = !0;
-	while(num_bytes_read){
-		result = i_fs.read(tmp_buff, 512, 512, num_bytes_read);
+  while (2) {
+	  printf("Opening file...\n");
+	  result = i_fs.open(filename, sizeof(filename));
 	  if (result != FS_RES_OK) {
-	    printf("File read error: %d\n", result);
+	    printf("result = %d\n", result);
 	    exit(1);
 	  }
-  	c_mp3_chan <: num_bytes_read;
-  	sout_char_array(c_mp3_chan, tmp_buff, num_bytes_read);
-		printintln(index);
-		index += num_bytes_read;
-		if (index > 30000){
-			static int toggle = 0;
-			if (toggle){
-				toggle = 0;
-				i_fs.open(filename2, sizeof(filename2));
+
+	  printf("Getting file size...\n");
+	  size_t file_size;
+	  result = i_fs.size(file_size);
+	  if (result != FS_RES_OK) {
+	    printf("result = %d\n", result);
+	    exit(1);
+	  }
+	 
+	  printf("Seeking back to beginning of file...\n");
+	  result = i_fs.seek(0, 1);
+	  if (result != FS_RES_OK) {
+	    printf("result = %d\n", result);
+	    exit(1);
+	  }
+
+
+		printf("Playing mp3 file %s\n", filename);
+	  
+
+		unsigned char tmp_buff[512];
+		unsigned index = 0; //How far through the file we have gone
+		unsigned num_bytes_read = ~0;
+		while(num_bytes_read){
+			result = i_fs.read(tmp_buff, 512, 512, num_bytes_read);
+		  if (result != FS_RES_OK) {
+		    printf("File read error: %d\n", result);
+		    exit(1);
+		  }
+		 	//This polls so we only do if needed
+		 	select {
+				case i_mp3_player.play_file(char new_filename[], size_t n):
+					memcpy(filename, new_filename, n);
+					printf("Opening file(0)...\n");
+					result = i_fs.open(filename, sizeof(filename));
+					if (result != FS_RES_OK) {
+					  printf("result = %d\n", result);
+					  exit(1);
+					}
+					result = i_fs.seek(0, 1);
+					index = 0;
+					c_mp3_stop <: 1;
+					break;
+				//drop through
+				default:
+					break;
 			}
-			else {
-				toggle = 1;
-				i_fs.open(filename, sizeof(filename));
+
+	  	c_mp3_chan <: num_bytes_read;
+	  	sout_char_array(c_mp3_chan, tmp_buff, num_bytes_read);
+			//printintln(index);
+			index += num_bytes_read;
+#if 0
+			if (index > 30000){
+				result = i_fs.seek(0, 1);
+				index = 0;
+				c_mp3_stop <: 1;
 			}
-			result = i_fs.seek(0, 1);
-			index = 0;
-			c_mp3_stop <: 1;
+#endif
 		}
-	}
-	c_mp3_chan <: 0xDEADBEEF;
-	printstrln("MP3 player sent terminate\n");
+		c_mp3_chan <: 0xDEADBEEF;
+		printstrln("MP3 player sent terminate\n");
 
-
+		//This blocks as we want to wait for the next sound
+		select {
+			case i_mp3_player.play_file(char new_filename[], size_t n):
+				memcpy(filename, new_filename, n);
+				printf("Opening file (1)...\n");
+				result = i_fs.open(filename, sizeof(filename));
+				if (result != FS_RES_OK) {
+				  printf("result = %d\n", result);
+				  exit(1);
+				}
+				result = i_fs.seek(0, 1);
+				index = 0;
+				printstrln("a");
+				c_mp3_stop <: 1;
+				printstrln("b");
+				break;
+		}
+	} //while (2)
 }
 
 #pragma unsafe arrays
@@ -366,6 +373,7 @@ int main(void) {
 	chan c_pcm_chan, c_mp3_stop;
 	interface fs_basic_if i_fs[1];
   interface fs_storage_media_if i_media;
+  interface i_mp3_player_t i_mp3_player;
 
 	par {
   	on tile[0]: {
@@ -381,14 +389,14 @@ int main(void) {
 					port_input_debounced(p_butt, 4, i_buttons);
 					quadrature(p_quadrature, i_quadrature);
 				}
-				app(4, i_buttons, duties, i_quadrature, i_resistor);
+				app(4, i_buttons, duties, i_quadrature, i_resistor, i_mp3_player);
 
 				//resistor_reader(p_adc, i_resistor);
 
 				qspi_flash_fs_media(i_media, qspi_flash_ports, qspi_spec, 512);
 		    filesystem_basic(i_fs, 1, FS_FORMAT_FAT12, i_media);
 
-				mp3_player(i_fs[0], c_mp3_chan, c_mp3_stop);
+				mp3_player(i_fs[0], c_mp3_chan, c_mp3_stop, i_mp3_player);
 				while(1) {
 					decoderMain(c_pcm_chan, c_mp3_chan, c_mp3_stop);
 					printstrln("Restart mp3");

@@ -253,8 +253,8 @@ static void MP3ClearBadFrame(MP3DecInfo *mp3DecInfo, chanend pcmChan)
 	if (!mp3DecInfo)
 		return;
 
-	__builtin_trap();
-	OutputToPCMBuf(mp3DecInfo->nGrans * mp3DecInfo->nGranSamps * mp3DecInfo->nChans, 0xffff, pcmChan);
+	//__builtin_trap();
+	//OutputToPCMBuf(mp3DecInfo->nGrans * mp3DecInfo->nGranSamps * mp3DecInfo->nChans, 0xffff, pcmChan);
 }
 
 /**************************************************************************************
