@@ -19,3 +19,13 @@ int RxNewFrame(unsigned char readBuf[], int size, streaming chanend rx_mp3)
     }
     return frame_len;
 }
+
+void check_for_stop(int *outOfData, chanend c_mp3_stop){
+    select {
+        case c_mp3_stop :> int _:
+            *outOfData = 1;
+            break;
+        default:
+            break;
+    }
+}

@@ -11,7 +11,7 @@
 
 #define READBUF_SIZE (MAX_NGRAN * MAX_NSAMP * 2 * 8) // 2 * 576 * 2 * 8 = 18.432 KB
 
-int decoderMain(chanend pcmChan, streaming_chanend_t rxChan)
+int decoderMain(chanend pcmChan, streaming_chanend_t rxChan, chanend c_mp3_stop)
 {
 	int bytesLeft, nRead, err, offset, outOfData, eofReached, nFrames;
 	unsigned char readBuf[READBUF_SIZE], *readPtr;
@@ -45,6 +45,7 @@ int decoderMain(chanend pcmChan, streaming_chanend_t rxChan)
 
 		do {
 			if (bytesLeft < 16384 && !end_of_stream_seen) {
+				//Non blocking using select
 				nRead = RxNewFrame(&readBuf[bytesLeft], READBUF_SIZE, rxChan);
 				if (nRead == 0xDEADBEEF) { // The other end indicated the end of stream
 					end_of_stream_seen = 1;
@@ -123,6 +124,7 @@ int decoderMain(chanend pcmChan, streaming_chanend_t rxChan)
 			/* no error */
 			// MP3GetLastFrameInfo(hMP3Decoder, &mp3FrameInfo);
 		}
+	check_for_stop(&outOfData, c_mp3_stop); //will set outofdata to 1 if token received
 
 	} while (!outOfData);
 	
