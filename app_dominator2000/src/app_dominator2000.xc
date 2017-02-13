@@ -124,6 +124,7 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan)
   }
 
   printf("Opening file...\n");
+  //char filename[] = "FUNK.MP3"; 
   char filename[] = "LIGHTSBR.MP3";
   result = i_fs.open(filename, sizeof(filename));
   if (result != FS_RES_OK) {
@@ -249,7 +250,8 @@ void src_simple(short * input_array, unsigned n_in_samples, unsigned char * outp
 
 
 unsigned char pwm_test[] = { 0 , 10, 20, 30, 40, 50, 60, 70, 80, 90 , 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250};
-#define STEREO_FLAG	0X8000		//MP3 pcm value set upper bit of index if stereo
+//MP3 pcm value set upper bit of first byte of index if stereo
+#define STEREO_FLAG	0x80		
 void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast) {
 
 	short sample_buff[MP3_PCM_FRAME_SIZE];		//Stereo = 32x l+r words
@@ -279,16 +281,13 @@ void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast) {
 					static unsigned channel = 0; 	//0 = left, 1 = right
 					unsigned is_stereo;
 
-	    		printhexln(word);
 	    		tmp_samp = (word >> 16);
   				mp3_subframe_index = word & 0xFFFF;
   				if (mp3_subframe_index & STEREO_FLAG) {
-  					mp3_subframe_index -= STEREO_FLAG;
+  					mp3_subframe_index &= ~STEREO_FLAG; //Clear stero flag from index
   					is_stereo = 1;
   				}
-  				else is_stereo = 0;
-  				//printintln(mp3_subframe_index);
-  				//printintln(is_stereo);
+  				else is_stereo = 	0;
   				sample[channel] = tmp_samp;
 
   				if (is_stereo){

@@ -243,7 +243,7 @@ void PolyphaseMono(short *pcm, int *vbuf, const int *coefBase, chanend pcmChan)
  * TODO:        add 32-bit version for platforms where 64-bit mul-acc is not supported
  **************************************************************************************/
 
-#define STEREO_FLAG	0x8000		//Set upper bit of index if stereo
+#define STEREO_FLAG	0x80		//Set upper bit of first byte if stereo
 void PolyphaseStereo(short *pcm, int *vbuf, const int *coefBase, chanend pcmChan)
 {
 	#if 1
@@ -254,7 +254,7 @@ void PolyphaseStereo(short *pcm, int *vbuf, const int *coefBase, chanend pcmChan
 	Word64 sum1L, sum2L, sum1R, sum2R, rndVal;
 	
 	// PCM index for channel
-	int pcmIdx = 0;
+	int pcmIdx = STEREO_FLAG;
 
 	rndVal = (Word64)( 1 << (DEF_NFRACBITS - 1 + (32 - CSHIFT)) );
 
@@ -272,9 +272,9 @@ void PolyphaseStereo(short *pcm, int *vbuf, const int *coefBase, chanend pcmChan
 	MC0S(6)
 	MC0S(7)
 
-	OutputToPCMBuf(ClipToShort((int)SAR64(sum1L, (32-CSHIFT)), DEF_NFRACBITS), pcmIdx + STEREO_FLAG, pcmChan);
+	OutputToPCMBuf(ClipToShort((int)SAR64(sum1L, (32-CSHIFT)), DEF_NFRACBITS), pcmIdx, pcmChan);
 	// *(pcm + 0) = ClipToShort((int)SAR64(sum1L, (32-CSHIFT)), DEF_NFRACBITS);
-	OutputToPCMBuf(ClipToShort((int)SAR64(sum1R, (32-CSHIFT)), DEF_NFRACBITS), pcmIdx + 1 + STEREO_FLAG, pcmChan);
+	OutputToPCMBuf(ClipToShort((int)SAR64(sum1R, (32-CSHIFT)), DEF_NFRACBITS), pcmIdx + 1, pcmChan);
 	// *(pcm + 1) = ClipToShort((int)SAR64(sum1R, (32-CSHIFT)), DEF_NFRACBITS);
 
 	/* special case, output sample 16 */
@@ -291,9 +291,9 @@ void PolyphaseStereo(short *pcm, int *vbuf, const int *coefBase, chanend pcmChan
 	MC1S(6)
 	MC1S(7)
 
-	OutputToPCMBuf(ClipToShort((int)SAR64(sum1L, (32-CSHIFT)), DEF_NFRACBITS), pcmIdx + 32 + STEREO_FLAG, pcmChan);
+	OutputToPCMBuf(ClipToShort((int)SAR64(sum1L, (32-CSHIFT)), DEF_NFRACBITS), pcmIdx + 32, pcmChan);
 	// *(pcm + 2*16 + 0) = ClipToShort((int)SAR64(sum1L, (32-CSHIFT)), DEF_NFRACBITS);
-	OutputToPCMBuf(ClipToShort((int)SAR64(sum1R, (32-CSHIFT)), DEF_NFRACBITS), pcmIdx + 33 + STEREO_FLAG, pcmChan);
+	OutputToPCMBuf(ClipToShort((int)SAR64(sum1R, (32-CSHIFT)), DEF_NFRACBITS), pcmIdx + 33, pcmChan);
 	// *(pcm + 2*16 + 1) = ClipToShort((int)SAR64(sum1R, (32-CSHIFT)), DEF_NFRACBITS);
 
 	/* main convolution loop: sum1L = samples 1, 2, 3, ... 15   sum2L = samples 31, 30, ... 17 */
@@ -319,13 +319,13 @@ void PolyphaseStereo(short *pcm, int *vbuf, const int *coefBase, chanend pcmChan
 		MC2S(7)
 
 		vb1 += 64;
-		OutputToPCMBuf(ClipToShort((int)SAR64(sum1L, (32-CSHIFT)), DEF_NFRACBITS), pcmIdx + STEREO_FLAG, pcmChan);
+		OutputToPCMBuf(ClipToShort((int)SAR64(sum1L, (32-CSHIFT)), DEF_NFRACBITS), pcmIdx, pcmChan);
 		// *(pcm + 0)         = ClipToShort((int)SAR64(sum1L, (32-CSHIFT)), DEF_NFRACBITS);
-		OutputToPCMBuf(ClipToShort((int)SAR64(sum1R, (32-CSHIFT)), DEF_NFRACBITS), pcmIdx + 1 + STEREO_FLAG, pcmChan);
+		OutputToPCMBuf(ClipToShort((int)SAR64(sum1R, (32-CSHIFT)), DEF_NFRACBITS), pcmIdx + 1, pcmChan);
 		// *(pcm + 1)         = ClipToShort((int)SAR64(sum1R, (32-CSHIFT)), DEF_NFRACBITS);
-		OutputToPCMBuf(ClipToShort((int)SAR64(sum2L, (32-CSHIFT)), DEF_NFRACBITS), pcmIdx + 4*i + STEREO_FLAG, pcmChan);
+		OutputToPCMBuf(ClipToShort((int)SAR64(sum2L, (32-CSHIFT)), DEF_NFRACBITS), pcmIdx + 4*i, pcmChan);
 		// *(pcm + 2*2*i + 0) = ClipToShort((int)SAR64(sum2L, (32-CSHIFT)), DEF_NFRACBITS);
-		OutputToPCMBuf(ClipToShort((int)SAR64(sum2R, (32-CSHIFT)), DEF_NFRACBITS), pcmIdx + 4*i + 1 + STEREO_FLAG, pcmChan);
+		OutputToPCMBuf(ClipToShort((int)SAR64(sum2R, (32-CSHIFT)), DEF_NFRACBITS), pcmIdx + 4*i + 1, pcmChan);
 		// *(pcm + 2*2*i + 1) = ClipToShort((int)SAR64(sum2R, (32-CSHIFT)), DEF_NFRACBITS);
 		//pcm += 2;
 		pcmIdx += 2;
