@@ -112,7 +112,7 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 #define PARTIAL_READ_LEN 5
 #define BUFFER_PATTERN   0xAAAAAAAA
 
-void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan) {
+void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan, chanend c_mp3_stop) {
 
   fs_result_t result;
 
@@ -124,7 +124,7 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan)
   }
 
   printf("Opening file...\n");
-  //char filename[] = "FUNK.MP3"; 
+  char filename2[] = "FUNK.MP3"; 
   char filename[] = "LIGHTSBR.MP3";
   result = i_fs.open(filename, sizeof(filename));
   if (result != FS_RES_OK) {
@@ -196,8 +196,22 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan)
 	  }
   	c_mp3_chan <: num_bytes_read;
   	sout_char_array(c_mp3_chan, tmp_buff, num_bytes_read);
-		//printintln(index);
+		printintln(index);
 		index += num_bytes_read;
+		if (index > 30000){
+			static int toggle = 0;
+			if (toggle){
+				toggle = 0;
+				i_fs.open(filename2, sizeof(filename2));
+			}
+			else {
+				toggle = 1;
+				i_fs.open(filename, sizeof(filename));
+			}
+			result = i_fs.seek(0, 1);
+			index = 0;
+			c_mp3_stop <: 1;
+		}
 	}
 	c_mp3_chan <: 0xDEADBEEF;
 	printstrln("MP3 player sent terminate\n");
@@ -374,8 +388,11 @@ int main(void) {
 				qspi_flash_fs_media(i_media, qspi_flash_ports, qspi_spec, 512);
 		    filesystem_basic(i_fs, 1, FS_FORMAT_FAT12, i_media);
 
-				mp3_player(i_fs[0], c_mp3_chan);
-				while(1) decoderMain(c_pcm_chan, c_mp3_chan, c_mp3_stop);
+				mp3_player(i_fs[0], c_mp3_chan, c_mp3_stop);
+				while(1) {
+					decoderMain(c_pcm_chan, c_mp3_chan, c_mp3_stop);
+					printstrln("Restart mp3");
+				}
 				pcm_post_process(c_pcm_chan, c_pwm_fast);
 				pwm_fast(c_pwm_fast, p_pwm_fast);
 			}
