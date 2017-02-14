@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import sys, binascii
+from shutil import copyfile
+from os import remove
 
 block_size = 1024	#Must be big enough to contain mp3 headers
 mp3_v1_l3_hdr = (0b11111111, 0b11111010) #Layer 3 v1 header for MP3
@@ -90,7 +92,7 @@ def analyse_header(mp3_frame_hdr):
 try:
   infile = sys.argv[1]
 except:
-  print "Please pass filename of wav to be chopped.\nEg. python wav2raw funk.wav\nOutput will be funk.raw"
+  print "Please pass filename of wav to have it's header chopped.\nEg. python mp3strip.py <filename>"
   sys.exit(1)
 outfile = infile.split(".")[:-1]
 outfile = "".join(outfile) + "_stripped.mp3"
@@ -106,6 +108,7 @@ with open(infile, "rb") as mp3file:
 			block = mp3file.read(block_size)
 			mp3_stripped_file.write(block)
 			if len(block) == 0:
-				print "Written header stripped file %s" % outfile
+				copyfile(outfile, infile)
+				remove(outfile)
 				sys.exit(0)
 	
