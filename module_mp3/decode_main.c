@@ -108,7 +108,7 @@ int decoderMain(chanend pcmChan, streaming_chanend_t rxChan, chanend c_mp3_stop)
 			switch (err)
 			{
 			case ERR_MP3_INDATA_UNDERFLOW:
-				printstrln("HERE");
+				printstrln("ERR_MP3_INDATA_UNDERFLOW");
 				outOfData = 1;
 				break;
 			case ERR_MP3_MAINDATA_UNDERFLOW:

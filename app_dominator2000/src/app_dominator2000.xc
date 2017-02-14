@@ -22,7 +22,7 @@
 #define PWM_DEPTH_BITS_N		8			//For wide PWM
 #define PWM_WIDE_FREQ_HZ		500
 
-#define MP3_PCM_FRAME_SIZE	1152	//samples
+#define MP3_PCM_FRAME_SIZE	512	//samples. Must be multiple of 32
 #define UPSAMPLE_RATIO			8
 
 fl_QSPIPorts qspi_flash_ports = {
@@ -34,8 +34,9 @@ fl_QSPIPorts qspi_flash_ports = {
 
 typedef interface i_mp3_player_t {
 	void play_file(char filename[], size_t len_filename);
-	//void set_volume(int volume_pc);
 } i_mp3_player_t;
+
+
 
 on tile[0]: out port p_leds = XS1_PORT_4F;
 on tile[0]: in port p_butt = XS1_PORT_4E;
@@ -45,6 +46,24 @@ on tile[0]: buffered out port:32 p_pwm_fast = XS1_PORT_1J; //X0D25
 
 
 on tile[0]: in port p_quadrature[2] = {XS1_PORT_1G, XS1_PORT_1H};
+
+char entdoor[] = "ENTDOOR.MP3";	
+char hhgtelep[] = "HHGTELEP.MP3";
+char laser2[] = "LASER2.MP3";
+char protonpk[] = "PROTONPK.MP3";
+char spceinv1[] = "SPCEINV1.MP3";
+char spceinv3[] = "SPCEINV3.MP3";
+char strtrklb[] = "STRTRKLB.MP3";
+char strtrktr[] = "STRTRKTR.MP3";
+char teeandmo[] = "TEEANDMO.MP3";
+char explode[] = "EXPLODE.MP3";
+char hithere[] = "HITHERE.MP3";
+char lightsbr[] = "LIGHTSBR.MP3";
+char quattro[] = "QUATTRO.MP3";
+char spceinv2[] = "SPCEINV2.MP3";
+char strtrkbr[] = "STRTRKBR.MP3";
+char strtrkpl[] = "STRTRKPL.MP3";
+char tainted[] = "TAINTED.MP3 ";
 
 #define PERIODIC_TIMER	8000000	//80ms
 
@@ -73,15 +92,16 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 				for (int i=0; i<port_bits; i++) {
 					//printintln(button_event[i]);
 				}
-				if ((button_event[0] == BUTTON_PRESSED) && led_index < 3) {
-					led_index++;
-					char funk[] = "FUNK.MP3";
-					i_mp3_player.play_file(funk, strlen(funk) + 1);
+				if (button_event[0] == BUTTON_PRESSED) {
+					i_mp3_player.play_file(quattro, strlen(quattro) + 1);
+					printstrln(quattro);
+					if (led_index < 3) led_index++;
 				}
-				if ((button_event[1] == BUTTON_PRESSED) && led_index > 0) {
-					led_index--;
-					char lightsbr[] = "LIGHTSBR.MP3";
-					i_mp3_player.play_file(lightsbr, strlen(lightsbr) + 1);
+				if (button_event[1] == BUTTON_PRESSED) {
+					i_mp3_player.play_file(teeandmo, strlen(teeandmo) + 1);
+					printstrln(teeandmo);
+					if (led_index > 0) led_index--;
+
 				}
 				break;
 
@@ -126,7 +146,7 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
 
   fs_result_t result;
   //This is DOS 8.3 so 16 enough..
-  char filename[16] = "LIGHTSBR.MP3";	//Startup sound
+  char filename[16] = "PROTONPK.MP3";	//Startup sound
 
 
 	printf("Mounting filesystem...\n");
@@ -218,9 +238,7 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
 				}
 				result = i_fs.seek(0, 1);
 				index = 0;
-				printstrln("a");
 				c_mp3_stop <: 1;
-				printstrln("b");
 				break;
 		}
 	} //while (2)
@@ -272,7 +290,9 @@ void src_simple(short * input_array, unsigned n_in_samples, unsigned char * outp
 
 unsigned char pwm_test[] = { 0 , 10, 20, 30, 40, 50, 60, 70, 80, 90 , 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250};
 //MP3 pcm value set upper bit of first byte of index if stereo
-#define STEREO_FLAG	0x80	
+#define STEREO_FLAG	0x80
+#define BAD_FRAME	0x0100
+
 void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast) {
 
 	short sample_buff[MP3_PCM_FRAME_SIZE];		//Stereo = 32x l+r words
@@ -310,6 +330,11 @@ void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast) {
   				}
   				else is_stereo = 	0;
   				sample[channel] = tmp_samp;
+
+  				if (mp3_subframe_index & BAD_FRAME) {
+  					total_samps_this_frame = 0;
+  					break;
+  				}
 
   				if (is_stereo){
 	  				//When L & R received, mix them together and store into mono sample buff
@@ -389,27 +414,25 @@ int main(void) {
 					port_input_debounced(p_butt, 4, i_buttons);
 					quadrature(p_quadrature, i_quadrature);
 				}
+				resistor_reader(p_adc, i_resistor);
 				app(4, i_buttons, duties, i_quadrature, i_resistor, i_mp3_player);
-
-				//resistor_reader(p_adc, i_resistor);
-
 				qspi_flash_fs_media(i_media, qspi_flash_ports, qspi_spec, 512);
 		    filesystem_basic(i_fs, 1, FS_FORMAT_FAT12, i_media);
 
 				mp3_player(i_fs[0], c_mp3_chan, c_mp3_stop, i_mp3_player);
-				while(1) {
-					decoderMain(c_pcm_chan, c_mp3_chan, c_mp3_stop);
-					printstrln("Restart mp3");
-				}
+
 				pcm_post_process(c_pcm_chan, c_pwm_fast);
 				pwm_fast(c_pwm_fast, p_pwm_fast);
 			}
 		}
 		on tile[1]: {
-
+			par{
+					while(1) {
+						decoderMain(c_pcm_chan, c_mp3_chan, c_mp3_stop);
+						printstrln("Restart mp3");
+					}
+				}
+			}
 		}
-
-
-	}
 	return 0;
 }
