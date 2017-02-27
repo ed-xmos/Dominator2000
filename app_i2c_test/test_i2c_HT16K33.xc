@@ -4,6 +4,10 @@
 #include <xclib.h>
 #include <stdlib.h>
 #include <print.h>
+#include <string.h>
+#include "font.h"
+#define FONT_V_SIZE	8
+#define FONT_H_SIZE	6
 
 #define I2C_ADDR	0x70
 
@@ -75,8 +79,8 @@ void init_display(client interface i2c_master_if i_i2c, unsigned duty){
 	buf[0] = 0b10100000; //Row driver output
 	result = i_i2c.write(I2C_ADDR, buf, 1, bytes_sent, 0);
 	//Dimming set
-	buf[0] = 0b11100000; //duty up to 16
-	buf[0] |= (duty & 0xf);
+	buf[0] = 0b11100000; 
+	buf[0] |= (duty & 0x0); //duty up to 16
 	result = i_i2c.write(I2C_ADDR, buf, 1, bytes_sent, 0);
 	//Blinking off, display on
 	buf[0] = 0b10000001;
@@ -131,6 +135,44 @@ unsafe void scroll_msg(client interface i2c_master_if i_i2c, const unsigned char
 	}
 }
 
+//	     { 0x00,0x00,0x5F,0x00,0x00,0x00 }, //Ascii-33
+
+
+unsigned make_msg_string(char *string, unsigned string_len, unsigned char sprite_array[64][8], client interface i2c_master_if i_i2c){
+	unsigned num_sprites = 0;
+	unsigned horiz_pos = 0;
+	unsigned msg_len = 0;
+
+	memset(sprite_array, sizeof(sprite_array), 0);
+
+	for (int i = 0; i < string_len; i++) {
+		unsigned char tmp_out[8] = {0};
+		char current = *(string + i);
+		for (int h = 0; h < FONT_H_SIZE; h++) {					//6
+			unsigned char tmp_in = f8x6fv[current][h];
+			//printhexln(tmp_in);
+			for (int v = 0; v < FONT_V_SIZE; v++) {				//8
+				unsigned r = tmp_in & (0x01 << v);
+				//printf("h:%d v:%d result:%d\n", h, v, r);
+				if (r) {
+					tmp_out[v] |= (0x80 >> h);
+				}
+			}
+		}
+		
+		for (int v = 0; v < FONT_V_SIZE; v++) {				//8
+			sprite_array[msg_len][v] |= tmp_out[v] >> horiz_pos;
+			sprite_array[msg_len + 1][v] |= ((unsigned)tmp_out[v] << 8) >> horiz_pos;
+		}
+
+		horiz_pos += FONT_H_SIZE;
+		if (horiz_pos >= 8) {
+			horiz_pos -= 8;
+			msg_len ++;
+		}
+	}
+	return msg_len + 1;
+}
 
 void test(client interface i2c_master_if i_i2c){
 
@@ -142,6 +184,18 @@ void test(client interface i2c_master_if i_i2c){
 		delay_milliseconds(100);
 	}
 	show_sprite(i_i2c, pacman);
+
+	unsigned char del[64][8];
+	unsigned char * unsafe tmp[16];
+	
+	unsigned len = make_msg_string("Hello", 5, del, i_i2c);
+	unsafe {
+		for (int i = 0; i < len; i++) {
+			tmp[i] = &del[i][0];	
+		}
+		scroll_msg(i_i2c, tmp, len);
+	}
+	delay_milliseconds(5000);
 
 	unsafe {
 		const unsigned char * unsafe msg[2] = {invader0, invader1};
