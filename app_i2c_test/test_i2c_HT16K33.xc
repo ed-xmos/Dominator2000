@@ -80,7 +80,7 @@ void init_display(client interface i2c_master_if i_i2c, unsigned duty){
 	result = i_i2c.write(I2C_ADDR, buf, 1, bytes_sent, 0);
 	//Dimming set
 	buf[0] = 0b11100000; 
-	buf[0] |= (duty & 0x0); //duty up to 16
+	buf[0] |= (duty & 0x7); //duty up to 16
 	result = i_i2c.write(I2C_ADDR, buf, 1, bytes_sent, 0);
 	//Blinking off, display on
 	buf[0] = 0b10000001;
@@ -143,7 +143,7 @@ unsigned make_msg_string(char *string, unsigned string_len, unsigned char sprite
 	unsigned horiz_pos = 0;
 	unsigned msg_len = 0;
 
-	memset(sprite_array, sizeof(sprite_array), 0);
+	memset(sprite_array, 0, sizeof(sprite_array));
 
 	for (int i = 0; i < string_len; i++) {
 		unsigned char tmp_out[8] = {0};
@@ -159,7 +159,7 @@ unsigned make_msg_string(char *string, unsigned string_len, unsigned char sprite
 				}
 			}
 		}
-		
+
 		for (int v = 0; v < FONT_V_SIZE; v++) {				//8
 			sprite_array[msg_len][v] |= tmp_out[v] >> horiz_pos;
 			sprite_array[msg_len + 1][v] |= ((unsigned)tmp_out[v] << 8) >> horiz_pos;
@@ -188,7 +188,7 @@ void test(client interface i2c_master_if i_i2c){
 	unsigned char del[64][8];
 	unsigned char * unsafe tmp[16];
 	
-	unsigned len = make_msg_string("Hello", 5, del, i_i2c);
+	unsigned len = make_msg_string("Hello world!", 12, del, i_i2c);
 	unsafe {
 		for (int i = 0; i < len; i++) {
 			tmp[i] = &del[i][0];	
