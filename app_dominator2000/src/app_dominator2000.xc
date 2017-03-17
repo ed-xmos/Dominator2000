@@ -12,13 +12,14 @@
 #include "pwm_fast.h"
 #include "decode_main.h"
 #include "us8_src.h"
+#include "dsp.h"
 
 #include "filesystem.h"
 #include "qspi_flash_storage_media.h"
 #include <quadflash.h>
 #include <QuadSpecMacros.h>
 
-#define PWM_PORT_BITS_N			4
+#define PWM_PORT_BITS_N			8
 #define PWM_DEPTH_BITS_N		8			//For wide PWM
 #define PWM_WIDE_FREQ_HZ		500
 
@@ -33,43 +34,65 @@ fl_QSPIPorts qspi_flash_ports = {
 };
 
 typedef interface i_mp3_player_t {
-	void play_file(char filename[], size_t len_filename);
+	void play_file(const char filename[], size_t len_filename);
 } i_mp3_player_t;
 
+on tile[0]: out port p_butt_leds = XS1_PORT_8B; //X0D14..21
+on tile[0]: out port p_bargraph = XS1_PORT_16B; //X0D26..27, X0D32..39
+on tile[0]: in port p_quadrature[2] = {XS1_PORT_1G, XS1_PORT_1H}; //X0D22,33
+on tile[0]: out port p_rgb_meter = XS1_PORT_4F; //X0D28..31
+
+on tile[1]: port p_adc = XS1_PORT_1A;	//X1D0
+on tile[1]: buffered out port:32 p_pwm_fast = XS1_PORT_1C; //X1D10 TP14 R29(1k5)
+on tile[1]: in port p_butt = XS1_PORT_8A; //X1D2..9
+on tile[1]: out port p_phy_rst = XS1_PORT_1N;	//X1D37
+on tile[1]: out port p_7_seg = XS1_PORT_8B;	//X1D14..X1D21
+on tile[1]: out port p_7_seg_com_0 = XS1_PORT_1L;	//X1D35
+on tile[1]: out port p_7_seg_com_1 = XS1_PORT_1O;	//X1D38
+on tile[1]: out port p_7_seg_com_2 = XS1_PORT_1P;	//X1D39
 
 
-on tile[0]: out port p_leds = XS1_PORT_4F;
-on tile[0]: in port p_butt = XS1_PORT_4E;
-on tile[0]: port p_adc = XS1_PORT_1I;
-on tile[0]: buffered out port:32 p_pwm_fast = XS1_PORT_1J; //X0D25
-///buffered out port:32 p_pwm_fast = XS1_PORT_1E; //X0D12
+//MP3 files
+const char blaster[] = "BLASTER.MP3";	
+const char chewy[] = "CHEWY.MP3";
+const char entdoor[] = "ENTDOOR.MP3";
+const char explode[] = "EXPLODE.MP3";
+const char flashchg[] = "FLASHCHG.MP3";
+const char hhgtelep[] = "HHGTELEP.MP3";
+const char hithere[] = "HITHERE.MP3";
+const char laser2[] = "LASER2.MP3";
+const char lightsbr[] = "LIGHTSBR.MP3";
+const char protonpk[] = "PROTONPK.MP3";
+const char quattro[] = "QUATTRO.MP3";
+const char r2d2[] = "R2D2.MP3";
+const char spceinv1[] = "SPCEINV1.MP3";
+const char spceinv2[] = "SPCEINV2.MP3";
+const char spceinv3[] = "SPCEINV3.MP3";
+const char strtrkbr[] = "STRTRKBR.MP3";
+const char strtrklb[] = "STRTRKLB.MP3";
+const char strtrkpl[] = "STRTRKPL.MP3";
+const char strtrktr[] = "STRTRKTR.MP3";
+const char tainted[] = "TAINTED.MP3";
+const char teeandmo[] = "TEEANDMO.MP3";
+const char vader[] = "VADER.MP3";
 
+const char * sounds[] = {blaster, chewy, entdoor, explode, flashchg, hhgtelep, hithere, laser2, lightsbr, protonpk, 
+	quattro, r2d2, spceinv1, spceinv2, spceinv3, strtrkbr, strtrklb, strtrkpl, strtrktr, tainted, teeandmo, vader};
 
-on tile[0]: in port p_quadrature[2] = {XS1_PORT_1G, XS1_PORT_1H};
+void bargraph_update(unsigned bits) {
+	unsigned write_val = (bits & 0x3) | (bits >> 4);
+	p_bargraph <: write_val;
+}
 
-char entdoor[] = "ENTDOOR.MP3";	
-char hhgtelep[] = "HHGTELEP.MP3";
-char laser2[] = "LASER2.MP3";
-char protonpk[] = "PROTONPK.MP3";
-char spceinv1[] = "SPCEINV1.MP3";
-char spceinv3[] = "SPCEINV3.MP3";
-char strtrklb[] = "STRTRKLB.MP3";
-char strtrktr[] = "STRTRKTR.MP3";
-char teeandmo[] = "TEEANDMO.MP3";
-char explode[] = "EXPLODE.MP3";
-char hithere[] = "HITHERE.MP3";
-char lightsbr[] = "LIGHTSBR.MP3";
-char quattro[] = "QUATTRO.MP3";
-char spceinv2[] = "SPCEINV2.MP3";
-char strtrkbr[] = "STRTRKBR.MP3";
-char strtrkpl[] = "STRTRKPL.MP3";
-char tainted[] = "TAINTED.MP3 ";
-
-#define PERIODIC_TIMER	8000000	//80ms
+#define PERIODIC_TIMER	8000000	//80ms app timer
 
 [[combinable]]
 void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned duties[PWM_PORT_BITS_N],
 	client i_quadrature_t i_quadrature, client i_resistor_t i_resistor, client i_mp3_player_t i_mp3_player) {
+	
+	const unsigned n_sounds = sizeof(sounds) / sizeof(const char *);
+	unsigned sound_idx = 0;
+
 	button_event_t button_event[MAX_INPUT_PORT_BITS] = {0};
 	duties[0] = 0;
 	duties[1] = 0;
@@ -84,6 +107,7 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 
 	t_periodic :> time_periodic_trigger;
 
+
 	while(1) {
 		select {
 			case i_buttons.buttons_event():
@@ -93,16 +117,15 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 					//printintln(button_event[i]);
 				}
 				if (button_event[0] == BUTTON_PRESSED) {
-					i_mp3_player.play_file(quattro, strlen(quattro) + 1);
-					printstrln(quattro);
-					if (led_index < 3) led_index++;
+					//Do nothing - we will restart the mp3
 				}
 				if (button_event[1] == BUTTON_PRESSED) {
-					i_mp3_player.play_file(teeandmo, strlen(teeandmo) + 1);
-					printstrln(teeandmo);
-					if (led_index > 0) led_index--;
-
+					sound_idx++;
+					if (sound_idx == n_sounds) sound_idx = 0;
 				}
+
+				i_mp3_player.play_file(sounds[sound_idx], strlen(sounds[sound_idx]) + 1); //+1 because of the terminator
+				printstrln(sounds[sound_idx]);
 				break;
 
 			case i_quadrature.rotate_event():
@@ -117,7 +140,12 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 				break;
 
 			case i_resistor.value_change_event():
-				printintln(i_resistor.get_val());
+				unsigned val = (unsigned)i_resistor.get_val();
+				printuintln(val);
+				q8_24 log_input = (q8_24)val;
+				q8_24 lin_output = dsp_math_log(log_input);
+				val = (unsigned) (lin_output);
+				printuintln(val);
 				break;
 
 			case t_periodic when timerafter(time_periodic_trigger + PERIODIC_TIMER) :> time_periodic_trigger:
@@ -135,11 +163,6 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 
 //#include "sine_left.h"
 #define MP3_DATA_TRANSFER_SIZE	1500 //Must be bigger than one frame (417B)
-
-
-#define BUFFER_SIZE      50
-#define PARTIAL_READ_LEN 5
-#define BUFFER_PATTERN   0xAAAAAAAA
 
 void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan, chanend c_mp3_stop
 	,server i_mp3_player_t i_mp3_player) {
@@ -206,7 +229,7 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
 #endif
 		 	//This polls so we only do if needed
 		 	select {
-				case i_mp3_player.play_file(char new_filename[], size_t n):
+				case i_mp3_player.play_file(const char new_filename[], size_t n):
 					memcpy(filename, new_filename, n);
 					printf("Opening file(0)...\n");
 					result = i_fs.open(filename, sizeof(filename));
@@ -228,7 +251,7 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
 
 		//This blocks as we want to wait for the next sound
 		select {
-			case i_mp3_player.play_file(char new_filename[], size_t n):
+			case i_mp3_player.play_file(const char new_filename[], size_t n):
 				memcpy(filename, new_filename, n);
 				printf("Opening file (1)...\n");
 				result = i_fs.open(filename, sizeof(filename));
@@ -406,30 +429,32 @@ int main(void) {
 			volatile unsigned * unsafe duties_ptr;
 			unsafe{ duties_ptr = duties;}
 		  fl_QuadDeviceSpec qspi_spec = FL_QUADDEVICE_ISSI_IS25LQ016B;	//What we actually have on the explorer board
-		  //fl_QuadDeviceSpec qspi_spec = FL_QUADDEVICE_SPANSION_S25FL116K;	//What we have on the explorer board
+		  //fl_QuadDeviceSpec qspi_spec = FL_QUADDEVICE_SPANSION_S25FL116K;	//What we are supposed to have on the explorer board
 
 			par {			
 				[[combine]] par {
-					pwm_wide_unbuffered(p_leds, PWM_PORT_BITS_N, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, duties_ptr);
-					port_input_debounced(p_butt, 4, i_buttons);
+					pwm_wide_unbuffered(p_butt_leds, PWM_PORT_BITS_N, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, duties_ptr);
 					quadrature(p_quadrature, i_quadrature);
 				}
-				resistor_reader(p_adc, i_resistor);
 				app(4, i_buttons, duties, i_quadrature, i_resistor, i_mp3_player);
 				qspi_flash_fs_media(i_media, qspi_flash_ports, qspi_spec, 512);
 		    filesystem_basic(i_fs, 1, FS_FORMAT_FAT12, i_media);
 
 				mp3_player(i_fs[0], c_mp3_chan, c_mp3_stop, i_mp3_player);
-
-				pcm_post_process(c_pcm_chan, c_pwm_fast);
-				pwm_fast(c_pwm_fast, p_pwm_fast);
 			}
 		}
 		on tile[1]: {
+			p_phy_rst <: 0; //Hold eth phy in reset to keep it off the bus and save power - we want to use those pins
 			par{
 					while(1) {
 						decoderMain(c_pcm_chan, c_mp3_chan, c_mp3_stop);
 						printstrln("Restart mp3");
+					}
+					pcm_post_process(c_pcm_chan, c_pwm_fast);
+					pwm_fast(c_pwm_fast, p_pwm_fast);
+					[[combine]] par {
+						resistor_reader(p_adc, i_resistor);
+						port_input_debounced(p_butt, 4, i_buttons);
 					}
 				}
 			}
