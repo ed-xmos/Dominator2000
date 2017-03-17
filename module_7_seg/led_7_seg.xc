@@ -18,9 +18,9 @@ const unsigned char digit_map[] = {
 };
 
 
-static void update_display(unsigned val, unsigned enabled, out port p_segments, out port p_com[LED_N_DIGITS], unsigned char bit_map[]) {
+static void update_display(unsigned disp_number, unsigned enabled, unsigned char bit_map[]) {
 	char number_string[LED_N_DIGITS + 1];
-	 sprintf(number_string, "%d", val);
+	 sprintf(number_string, "%d", disp_number);
 
 	for (int i = 0; i < LED_N_DIGITS; i++) {
 		unsigned char digit = (*(number_string + LED_N_DIGITS - 1 + i)) - '0';
@@ -35,43 +35,63 @@ void led_7_seg(
 	out port p_com[LED_N_DIGITS]){
 
 	unsigned enabled = 0;
-	unsigned val = 0;
-	unsigned char bit_map[LED_N_DIGITS] = {0};
+	unsigned displayed_number = 0;
 
+	unsigned char bit_map[LED_N_DIGITS];
+	unsigned common_idx = 0;
+
+	//mux and segments off
+	p_segments <: 0;
+	for (int i = 0; i < LED_N_DIGITS; i++) p_com[i] <: 1;
 
 	int time_trig;
 	timer t;
-	#error do upate stuff
+	
+	t :> time_trig;
 
-	update_display(val, enabled, p_segments, p_com, bit_map);
+	update_display(displayed_number, enabled, bit_map);
 
 	while(1){
 		select{
-			case i_7seg.set_val(unsigned new_val):
-				val = new_val;
-				if (val > MAX_VAL) val = MAX_VAL; //Unsigned so no minval
-				update_display(val, enabled, p_segments, p_com, bit_map);
+
+			case t when timerafter(MUX_DELAY + time_trig) :> time_trig:
+				//current mux off
+				p_com[1 << common_idx] <: 1;
+				//change display
+				p_segments <: bit_map[common_idx];
+
+				//next mux line
+				common_idx++;
+				if (common_idx == LED_N_DIGITS) common_idx = 0;
+				//mux on
+				p_com[1 << common_idx] <: 0;
 				break;
 
-			case i_7seg.get_val(void) -> unsigned ret_val:
-				ret_val = val;
+			case i_7seg.set_val(unsigned new_displayed_number):
+				displayed_number = new_displayed_number;
+				if (displayed_number > MAX_VAL) displayed_number = MAX_VAL; //Unsigned so no mindisp_number
+				update_display(displayed_number, enabled, bit_map);
+				break;
+
+			case i_7seg.get_val(void) -> unsigned ret_displayed_number:
+				ret_displayed_number = displayed_number;
 				break;
 
 			case i_7seg.inc_val(void):
-				val += 1;
-				if (val > MAX_VAL) val = MAX_VAL; //Unsigned so no minval
-				update_display(val, enabled, p_segments, p_com, bit_map);
+				displayed_number += 1;
+				if (displayed_number > MAX_VAL) displayed_number = MAX_VAL; //Unsigned so no mindisp_number
+				update_display(displayed_number, enabled, bit_map);
 				break;
   
   		case i_7seg.dec_val(void):
-  			val -= 1;
-				if (val > MAX_VAL) val = 0; //Unsigned so will wrap around to max
-				update_display(val, enabled, p_segments, p_com, bit_map);
+  			displayed_number -= 1;
+				if (displayed_number > MAX_VAL) displayed_number = 0; //Unsigned so will wrap around to max
+				update_display(displayed_number, enabled, bit_map);
 				break;
 
 			case i_7seg.display_enable(unsigned enabled_new):
 				enabled = enabled_new;
-				update_display(val, enabled, p_segments, p_com, bit_map);
+				update_display(displayed_number, enabled, bit_map);
 				break;
 		}
 	}

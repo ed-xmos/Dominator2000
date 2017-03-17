@@ -41,7 +41,7 @@ def find_mp3_data_index(block):
 				next_data_index = analyse_header(mp3_frame_hdr)
 				return data_index - 3
 		data_index += 1
-	print "Error - end of wav file header not found"
+	print "Error - no mp3 block header not found"
 	sys.exit 
 
 def analyse_header(mp3_frame_hdr):

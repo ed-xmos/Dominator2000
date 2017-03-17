@@ -2,6 +2,7 @@
 
 #define LED_N_DIGITS	2
 #define MAX_VAL ((10 * LED_N_DIGITS) - 1)
+#define MUX_DELAY		1000000	//10ms
 
 typedef interface i_7_seg_t {
   void set_val(unsigned val);
