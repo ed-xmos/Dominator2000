@@ -5,7 +5,7 @@
 #include <print.h>
 #include <string.h>
 
-#define KICKOFF 100000 // 10us
+#define KICKOFF 500000 // 10us
 #define SEQ_PERIOD 10000
 
 //Instuction fromat
@@ -29,6 +29,10 @@ typedef enum operands {
 
 const unsigned program[128] = {
 	PLAY | FUNK | 0,
+	LED | ON | 4,
+	LED | OFF| 4,
+	LED | ON | 4,
+	LED | OFF| 4,
 	LED | ON | 4,
 	LED | OFF| 0,
 	END |      0
@@ -116,6 +120,7 @@ void sequencer(client interface dostuff_if i_dostuff)
 								break;
 
 							default:
+								printf("invalid instruction\n");
 								__builtin_trap();
 								break;
 						}
@@ -123,25 +128,25 @@ void sequencer(client interface dostuff_if i_dostuff)
 					} 
 					else //delay_counter is non-zero
 					{
-						printf("%d\n", delay_counter);
+						printf("waiting - %d\n", delay_counter);
 						delay_counter--; //skip instruction for once cycle
 					}
 				}
-				else
+				else //if not running, do nothing
 				{
-					printf(".\n");
+					//printf(".\n");
 				}
 				break;
 
 			case i_dostuff.button_press(void):
-				printf("Button press\n");
 				i_dostuff.button_pressed_ack();
 				running = 1;
 				intstr_idx = 0;
+				delay_counter = 0;
 				break;
 		}
 	}
-	}
+}
 
 int main(void){
 	interface dostuff_if i_dostuff;
