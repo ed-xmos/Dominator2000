@@ -8,6 +8,9 @@
 #define KICKOFF 500000 // 10us
 #define SEQ_PERIOD 10000
 
+#define NUM_PROGS					2
+#define MAX_PROG_LENGTH		128
+
 //Instuction fromat
 //BYTE3 BYTE2 BYTE1 BYTE0
 //instr val   delay	delay (seq periods)
@@ -27,7 +30,8 @@ typedef enum operands {
 
 } operands;
 
-const unsigned program[128] = {
+const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
+{
 	PLAY | FUNK | 0,
 	LED | ON | 4,
 	LED | OFF| 4,
@@ -36,13 +40,19 @@ const unsigned program[128] = {
 	LED | ON | 4,
 	LED | OFF| 0,
 	END |      0
+},
+{
+	PLAY | LIGHTSBR | 0,
+	END |      0
+}
+
 };
 
 interface dostuff_if {
 	void led(unsigned val);
 	void play(const char track[], size_t track_size);
 	[[notification]] slave void button_press(void);
-  [[clears_notification]] void button_pressed_ack(void);
+  [[clears_notification]] unsigned button_pressed_ack(void);
 };
 
 void my_slave(server interface dostuff_if i_dostuff){
@@ -62,8 +72,9 @@ void my_slave(server interface dostuff_if i_dostuff){
 				printf("Playing %s\n", track_cpy);
 				break;
 
-			case i_dostuff.button_pressed_ack(void):
+			case i_dostuff.button_pressed_ack(void) -> unsigned but_idx:
 				printf("Button press ACK\n");
+				but_idx = 0;
 				break;
 
 			case t when timerafter(time) :> void:
@@ -78,71 +89,79 @@ void sequencer(client interface dostuff_if i_dostuff)
 {
 	timer t;
 	unsigned trig_time;
-	unsigned running = 0;
-	unsigned intstr_idx = 0;
-	unsigned delay_counter = 0;
+	unsigned running[NUM_PROGS] = {0};
+	unsigned intstr_idx[NUM_PROGS] = {0};
+	unsigned delay_counter[NUM_PROGS] = {0};
 
 	while(1){
 		select{
 			case t when timerafter(trig_time + SEQ_PERIOD) :> trig_time:
-				if (running)
+				for (int i = 0; i < NUM_PROGS; i++)
 				{
-					if (delay_counter == 0)
+					if (running[i] != 0)
 					{
-						unsigned instruction = program[intstr_idx] & 0xff000000;
-						unsigned operand = program[intstr_idx] & 0x00ff0000;
-						delay_counter = program[intstr_idx] & 0x0000ffff;
-						switch (instruction){
-							case NOP:
-								break;
+						if (delay_counter[i] == 0)
+						{
+							unsigned instruction = program[i][intstr_idx[i]] & 0xff000000;
+							unsigned operand = program[i][intstr_idx[i]] & 0x00ff0000;
+							delay_counter[i] = program[i][intstr_idx[i]] & 0x0000ffff;
+							switch (instruction){
+								case NOP:
+									break;
 
-							case LED:
-								i_dostuff.led(operand >> 16);
-								break;
+								case LED:
+									i_dostuff.led(operand >> 16);
+									break;
 
-	 						case PLAY:
-	 							char track[64];
-		 						switch (operand){
-		 							case FUNK:
-		 								strcpy(track, "FUNK.MP3");
-		 								printf("%s %d\n", track, strlen(track) + 1);
-		 								i_dostuff.play(track, strlen(track) + 1);
-		 								break;
-		 							default:
-		 								printf("Error invalid track index\n");
-		 								break;
-	 							}
-								break;
+		 						case PLAY:
+		 							char track[64];
+			 						switch (operand){
+			 							case FUNK:
+			 								strcpy(track, "FUNK.MP3");
+			 								i_dostuff.play(track, strlen(track) + 1);
+			 								break;
 
-							case END:
-								running = 0;
-								printf("END\n");
-								break;
+			 							case LIGHTSBR:
+			 								strcpy(track, "LIGHTSBR.MP3");
+			 								i_dostuff.play(track, strlen(track) + 1);
+			 								break;
 
-							default:
-								printf("invalid instruction\n");
-								__builtin_trap();
-								break;
+			 							default:
+			 								printf("Error invalid track index\n");
+			 								break;
+		 							}
+									break;
+
+								case END:
+									running[i] = 0;
+									printf("END\n");
+									break;
+
+								default:
+									printf("invalid instruction\n");
+									__builtin_trap();
+									break;
+							}
+							intstr_idx[i]++;
+						} 
+						else //delay_counter is non-zero
+						{
+							printf("waiting - %d\n", delay_counter[i]);
+							delay_counter[i]--; //skip instruction for once cycle
 						}
-						intstr_idx++;
-					} 
-					else //delay_counter is non-zero
-					{
-						printf("waiting - %d\n", delay_counter);
-						delay_counter--; //skip instruction for once cycle
 					}
-				}
-				else //if not running, do nothing
-				{
-					//printf(".\n");
+					else //if not running, do nothing
+					{
+						//printf(".\n");
+					}
 				}
 				break;
 
-			case i_dostuff.button_press(void):
-				i_dostuff.button_pressed_ack();
-				running = 1;
-				intstr_idx = 0;
-				delay_counter = 0;
+			case i_dostuff.button_press():
+				unsigned but_idx = i_dostuff.button_pressed_ack();
+				running[but_idx] = 1;
+				intstr_idx[but_idx] = 0;
+				delay_counter[but_idx] = 0;
 				break;
 		}
 	}
