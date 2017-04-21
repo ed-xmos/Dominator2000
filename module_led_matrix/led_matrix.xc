@@ -88,6 +88,7 @@ static void show_sprite(client interface i2c_master_if i_i2c, const unsigned cha
 	}
 }
 
+#if 0
 static unsafe void scroll_msg(client interface i2c_master_if i_i2c, const unsigned char * unsafe sprite_array[n], const unsigned n) {
 	unsigned char frame_buf[8];
 	for (int sp = -1; sp < (int)n; sp++){
@@ -121,6 +122,7 @@ static unsafe void scroll_msg(client interface i2c_master_if i_i2c, const unsign
 		}
 	}
 }
+#endif
 
 static unsigned make_msg_string(const char *string, unsigned string_len, unsigned char sprite_array[64][8]) {
 	unsigned horiz_pos = 0;
@@ -165,11 +167,13 @@ void led_matrix(server i_led_matrix_t i_led_matrix, client interface i2c_master_
 	unsigned char scroll_data[64][8];
 	unsigned char * unsafe msg[64];
 
+	//Stuff for scrolling
 	int sp;	//Sprite pointer
 	unsigned scrolling_flag = 0;
 	timer t;
 	unsigned timeout;
 	int step = 0;
+	unsigned n_sprites = 0;
 
 	//Enable clk
 	buf[0] = 0b00100001;	//enable osc
@@ -189,13 +193,20 @@ void led_matrix(server i_led_matrix_t i_led_matrix, client interface i2c_master_
 		select {
 			case i_led_matrix.show_sprite(unsigned sprite_idx):
 				show_sprite(i_i2c, user_sprites[sprite_idx]);
+				scrolling_flag = 0; //Cancel any previous scrolling
 				break;
 
 			case i_led_matrix.scroll_sprites(const unsigned sprite_idxs[n], const unsigned n):
 				unsafe{
 					for(int i = 0; i < n; i++) msg[i] = (unsigned char * unsafe)user_sprites[sprite_idxs[i]];
-					scroll_msg(i_i2c, msg, n);
 				}
+			
+				//Go sprite scrolling!
+				sp = -1;
+				step = 0;
+				n_sprites = n;
+				scrolling_flag = 1;
+				t :> timeout;
 				break;
 
 			case i_led_matrix.scroll_text_msg(const char message[n], const unsigned n):
@@ -206,24 +217,31 @@ void led_matrix(server i_led_matrix_t i_led_matrix, client interface i2c_master_
 					for (int i = 0; i < len; i++) {
 						msg[i] = &scroll_data[i][0];	
 					}
-					scroll_msg(i_i2c, msg, len);
 				}
+
+				//Go sprite scrolling!
+				sp = -1;
+				step = 0;
+				n_sprites = len;
+				scrolling_flag = 1;
+				t :> timeout;
 				break;
 
-#if 0
 			case scrolling_flag => t when timerafter(timeout + SCROLL_DELAY) :> timeout:
 				unsafe {
 					const unsigned char * unsafe curr;
 					const unsigned char * unsafe next;
+					unsigned char frame_buf[8];
+
 					if (sp == -1) {
 						curr = blank;
 						next = msg[0];
 					}
-					else if (sp == (n - 1)) {
+					else if (sp == (n_sprites - 1)) {
 						curr = msg[sp];
 						next = blank;
 					}
-					else if (sp == n) {
+					else if (sp == n_sprites) {
 						curr = blank;
 						next = blank;
 					}
@@ -239,14 +257,13 @@ void led_matrix(server i_led_matrix_t i_led_matrix, client interface i2c_master_
 					}
 					show_sprite(i_i2c, frame_buf);
 				}
-				step++;
+				step++;	//increment horizontal idx
 				if (step == 8) {
 					step = 0;
-					sp++;
-					if (sp == n) scrolling_flag = 0;
+					sp++;	//next sprite
+					if (sp == n_sprites) scrolling_flag = 0;
 				}
 				break; 
-#endif
 		}
 	}
 }
