@@ -16,9 +16,13 @@
 #include "audio.h"
 #include "dsp.h"
 #include "decode_main.h"
+#include "led_7_seg.h"
+#include "rgbx_pallette.h"
+#include "i2c.h"
+#include "led_matrix.h"
 
+#define I2C_ADDR						0x70	//For LED matrix
 
-#define PWM_PORT_BITS_N			8
 #define PWM_DEPTH_BITS_N		8			//For wide PWM
 #define PWM_WIDE_FREQ_HZ		500
 
@@ -33,15 +37,15 @@ on tile[0]: out port p_butt_leds = XS1_PORT_8B; //X0D14..21
 on tile[0]: out port p_bargraph = XS1_PORT_16B; //X0D26..27, X0D32..39
 on tile[0]: in port p_quadrature[2] = {XS1_PORT_1G, XS1_PORT_1H}; //X0D22,33
 on tile[0]: out port p_rgb_meter = XS1_PORT_4F; //X0D28..31
+on tile[0]: port p_scl = XS1_PORT_1E; //X0D12
+on tile[0]: port p_sda = XS1_PORT_1F; //X0D13
 
 on tile[1]: port p_adc = XS1_PORT_1A;	//X1D0
 on tile[1]: buffered out port:32 p_pwm_fast = XS1_PORT_1C; //X1D10 TP14 R29(1k5)
 on tile[1]: in port p_butt = XS1_PORT_8A; //X1D2..9
 on tile[1]: out port p_phy_rst = XS1_PORT_1N;	//X1D37
 on tile[1]: out port p_7_seg = XS1_PORT_8B;	//X1D14..X1D21
-on tile[1]: out port p_7_seg_com_0 = XS1_PORT_1L;	//X1D35
-on tile[1]: out port p_7_seg_com_1 = XS1_PORT_1O;	//X1D38
-on tile[1]: out port p_7_seg_com_2 = XS1_PORT_1P;	//X1D39
+on tile[1]: out port p_7_seg_com[LED_N_DIGITS] = {XS1_PORT_1L, XS1_PORT_1O};	//X1D35, X1D38
 
 
 //MP3 files
@@ -79,17 +83,14 @@ void bargraph_update(unsigned bits) {
 #define PERIODIC_TIMER	8000000	//80ms app timer
 
 [[combinable]]
-void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned duties[PWM_PORT_BITS_N],
-	client i_quadrature_t i_quadrature, client i_resistor_t i_resistor, client i_mp3_player_t i_mp3_player) {
+void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned butt_duties[8], unsigned mbgr_duties[4],
+	client i_quadrature_t i_quadrature, client i_resistor_t i_resistor, client i_mp3_player_t i_mp3_player,
+	client i_7_seg_t i_7_seg, client i_led_matrix_t i_led_matrix) {
 	
 	const unsigned n_sounds = sizeof(sounds) / sizeof(const char *);
 	unsigned sound_idx = 0;
 
 	button_event_t button_event[MAX_INPUT_PORT_BITS] = {0};
-	duties[0] = 0;
-	duties[1] = 0;
-	duties[2] = 0;
-	duties[3] = 0;
 
 	timer t_periodic;
 	int time_periodic_trigger;
@@ -99,6 +100,7 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 
 	t_periodic :> time_periodic_trigger;
 
+	i_led_matrix.scroll_text_msg("Domitron 2000", 13);
 
 	while(1) {
 		select {
@@ -118,6 +120,8 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 
 				i_mp3_player.play_file(sounds[sound_idx], strlen(sounds[sound_idx]) + 1); //+1 because of the terminator
 				printstrln(sounds[sound_idx]);
+				const unsigned sprite_idxs[] = {2, 3};
+				i_led_matrix.scroll_sprites(sprite_idxs, 2);
 				break;
 
 			case i_quadrature.rotate_event():
@@ -127,8 +131,14 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 					printstrln("");
 					last_rotation = rotation;
 				}
-				if (rotation == 1) printstr("+");
-				if (rotation == -1) printstr("-");
+				if (rotation == 1) {
+					i_7_seg.inc_val();
+					printstr("+");
+				}
+				if (rotation == -1) {
+					i_7_seg.inc_val();
+					printstr("-");
+				}
 				break;
 
 			case i_resistor.value_change_event():
@@ -138,14 +148,20 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 				q8_24 lin_output = dsp_math_log(log_input);
 				val = (unsigned) (lin_output);
 				printuintln(val);
+				unsigned scaled = val / 1000;
+				bargraph_update(1 << scaled);
+				mbgr_duties[1] = scaled;	//Meter
+
+				mbgr_duties[1] = rgb_pallette[4 * scaled + 2];	//Blue
+				mbgr_duties[2] = rgb_pallette[4 * scaled + 1];	//Green
+				mbgr_duties[3] = rgb_pallette[4 * scaled + 0];	//Red
 				break;
 
 			case t_periodic when timerafter(time_periodic_trigger + PERIODIC_TIMER) :> time_periodic_trigger:
-				duties[led_index] = new_duty;
+				butt_duties[led_index] = new_duty;
 				new_duty <<= 1;
 				//printintln(new_duty);
 				if (new_duty == 0x100) new_duty = 0x1;
-
 
 				break;
 		}
@@ -162,25 +178,32 @@ int main(void) {
 	interface fs_basic_if i_fs[1];
   interface fs_storage_media_if i_media;
   interface i_mp3_player_t i_mp3_player;
+  i_7_seg_t i_7_seg;
+  i2c_master_if i_i2c[1];
+  i_led_matrix_t i_led_matrix;
 
 	par {
   	on tile[0]: {
-  		unsigned duties[PWM_PORT_BITS_N] = {10, 255, 0, 100};
-			volatile unsigned * unsafe duties_ptr;
-			unsafe{ duties_ptr = duties;}
+  		unsigned butt_duties[8] = {128, 128, 128, 128, 128, 128, 128, 128};
+  		unsigned mbgr_duties[4] = {50, 100, 150, 200};
+			volatile unsigned * unsafe butt_duties_ptr;
+			volatile unsigned * unsafe mbgr_duties_ptr;
+			unsafe{ butt_duties_ptr = butt_duties; mbgr_duties_ptr = mbgr_duties;}
 		  fl_QuadDeviceSpec qspi_spec = FL_QUADDEVICE_ISSI_IS25LQ016B;	//What we actually have on the explorer board
 		  //fl_QuadDeviceSpec qspi_spec = FL_QUADDEVICE_SPANSION_S25FL116K;	//What we are supposed to have on the explorer board
 
 			par {			
 				[[combine]] par {
-					pwm_wide_unbuffered(p_butt_leds, PWM_PORT_BITS_N, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, duties_ptr);
+					pwm_wide_unbuffered(p_butt_leds, 8, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, butt_duties_ptr);
+					pwm_wide_unbuffered(p_rgb_meter, 4, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, mbgr_duties_ptr);
 					quadrature(p_quadrature, i_quadrature);
 				}
-				app(4, i_buttons, duties, i_quadrature, i_resistor, i_mp3_player);
+				app(4, i_buttons, butt_duties, mbgr_duties, i_quadrature, i_resistor, i_mp3_player, i_7_seg, i_led_matrix);
 				qspi_flash_fs_media(i_media, qspi_flash_ports, qspi_spec, 512);
 		    filesystem_basic(i_fs, 1, FS_FORMAT_FAT12, i_media);
-
 				mp3_player(i_fs[0], c_mp3_chan, c_mp3_stop, i_mp3_player);
+				i2c_master(i_i2c, 1, p_scl, p_sda, 400);
+				led_matrix(i_led_matrix, i_i2c[0], 5);
 			}
 		}
 		on tile[1]: {
@@ -195,6 +218,7 @@ int main(void) {
 					[[combine]] par {
 						resistor_reader(p_adc, i_resistor);
 						port_input_debounced(p_butt, 4, i_buttons);
+						led_7_seg(i_7_seg, p_7_seg, p_7_seg_com);
 					}
 				}
 			}

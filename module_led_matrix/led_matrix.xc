@@ -200,7 +200,7 @@ void led_matrix(server i_led_matrix_t i_led_matrix, client interface i2c_master_
 				unsafe{
 					for(int i = 0; i < n; i++) msg[i] = (unsigned char * unsafe)user_sprites[sprite_idxs[i]];
 				}
-			
+
 				//Go sprite scrolling!
 				sp = -1;
 				step = 0;
@@ -261,7 +261,7 @@ void led_matrix(server i_led_matrix_t i_led_matrix, client interface i2c_master_
 				if (step == 8) {
 					step = 0;
 					sp++;	//next sprite
-					if (sp == n_sprites) scrolling_flag = 0;
+					if (sp == n_sprites) scrolling_flag = 0; //finished
 				}
 				break; 
 		}
