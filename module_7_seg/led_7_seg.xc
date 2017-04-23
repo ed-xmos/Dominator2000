@@ -20,10 +20,11 @@ const unsigned char digit_map[] = {
 
 static void update_display(unsigned disp_number, unsigned enabled, unsigned char bit_map[]) {
 	char number_string[LED_N_DIGITS + 1];
-	 sprintf(number_string, "%d", disp_number);
-
+	sprintf(number_string, "%02d", disp_number);
+	printf("number_string=%s\n", number_string);
 	for (int i = 0; i < LED_N_DIGITS; i++) {
-		unsigned char digit = (*(number_string + LED_N_DIGITS - 1 + i)) - '0';
+		unsigned char digit = (*(number_string + LED_N_DIGITS - 1 - i)) - '0';
+		printf("digit idx = %d\n", digit);
 		bit_map[i] = digit_map[digit];
 	}
 }
@@ -56,7 +57,7 @@ void led_7_seg(
 
 			case t when timerafter(MUX_DELAY + time_trig) :> time_trig:
 				//current mux off
-				p_com[1 << common_idx] <: 1;
+				p_com[common_idx] <: 1;
 				//change display
 				p_segments <: bit_map[common_idx];
 
@@ -64,7 +65,7 @@ void led_7_seg(
 				common_idx++;
 				if (common_idx == LED_N_DIGITS) common_idx = 0;
 				//mux on
-				p_com[1 << common_idx] <: 0;
+				p_com[common_idx] <: 0;
 				break;
 
 			case i_7seg.set_val(unsigned new_displayed_number):

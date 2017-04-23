@@ -13,7 +13,7 @@ typedef enum button_event_t {
 
 typedef interface i_buttons_t {
 	[[clears_notification]]
-	void get_state(button_event_t button_event[], unsigned n);
+	void get_state(button_event_t button_event[]);
 	[[notification]]
 	slave void buttons_event(void);
 } i_buttons_t;

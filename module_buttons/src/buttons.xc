@@ -12,7 +12,7 @@ void port_input_debounced(in port p_input, static const unsigned width, server i
 	unsigned old_port_val;
 	unsigned new_port_val;
 
-	button_event_t button_event_log[MAX_INPUT_PORT_BITS] = {0};
+	button_event_t button_event_log[MAX_INPUT_PORT_BITS] = {BUTTON_NOCHANGE};
 
 	set_port_pull_down(p_input);
 	delay_milliseconds(1); //Wait for port to settle after pulldowns enabled
@@ -22,7 +22,7 @@ void port_input_debounced(in port p_input, static const unsigned width, server i
 
 	while(1){
 		select {
-			case i_buttons.get_state(button_event_t button_event[], unsigned n):
+			case i_buttons.get_state(button_event_t button_event[]):
 				memcpy(button_event, button_event_log, sizeof(button_event_log));
 				break;
 

@@ -105,7 +105,7 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 	while(1) {
 		select {
 			case i_buttons.buttons_event():
-				i_buttons.get_state(button_event, 0);
+				i_buttons.get_state(button_event);
 				//printstrln("New buttons:");
 				for (int i=0; i<port_bits; i++) {
 					//printintln(button_event[i]);
@@ -149,6 +149,7 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 				val = (unsigned) (lin_output);
 				printuintln(val);
 				unsigned scaled = val / 1000;
+				if (scaled > 100) scaled = 100;
 				bargraph_update(1 << scaled);
 				mbgr_duties[1] = scaled;	//Meter
 
