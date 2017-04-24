@@ -83,8 +83,8 @@ void bargraph_update(unsigned bits) {
 #define PERIODIC_TIMER	8000000	//80ms app timer
 
 [[combinable]]
-void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned butt_duties[8], unsigned mbgr_duties[4],
-	client i_quadrature_t i_quadrature, client i_resistor_t i_resistor, client i_mp3_player_t i_mp3_player,
+void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbgr_duties[4],
+	client i_quadrature_t i_quadrature, client i_resistor_t i_resistor, client i_mp3_player_t i_mp3_player, chanend c_atten,
 	client i_7_seg_t i_7_seg, client i_led_matrix_t i_led_matrix) {
 	
 	const unsigned n_sounds = sizeof(sounds) / sizeof(const char *);
@@ -96,7 +96,7 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 	int time_periodic_trigger;
 
 	int new_duty = 0x1;
-	int led_index = 1;
+	int led_index = 0;
 
 	t_periodic :> time_periodic_trigger;
 
@@ -111,17 +111,39 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 					//printintln(button_event[i]);
 				}
 				if (button_event[0] == BUTTON_PRESSED) {
-					//Do nothing - we will restart the mp3
+					i_mp3_player.play_file(sounds[sound_idx], strlen(sounds[sound_idx]) + 1); //+1 because of the terminator
+					printstrln(sounds[sound_idx]);
+					if (sound_idx == n_sounds) sound_idx = 0;
+					sound_idx++;
 				}
 				if (button_event[1] == BUTTON_PRESSED) {
-					sound_idx++;
-					if (sound_idx == n_sounds) sound_idx = 0;
+					const unsigned sprite_idxs[] = {2, 3};
+					i_led_matrix.scroll_sprites(sprite_idxs, 2);
 				}
-
-				i_mp3_player.play_file(sounds[sound_idx], strlen(sounds[sound_idx]) + 1); //+1 because of the terminator
-				printstrln(sounds[sound_idx]);
-				const unsigned sprite_idxs[] = {2, 3};
-				i_led_matrix.scroll_sprites(sprite_idxs, 2);
+				if (button_event[2] == BUTTON_PRESSED) {
+					const unsigned sprite_idxs[] = {2, 3};
+					i_led_matrix.scroll_sprites(sprite_idxs, 2);
+				}
+				if (button_event[3] == BUTTON_PRESSED) {
+					led_index++;
+					if (led_index > 4) led_index = 0;
+				}
+				if (button_event[4] == BUTTON_PRESSED) {
+					led_index--;
+					if (led_index < 0) led_index = 4;
+				}
+				if (button_event[5] == BUTTON_PRESSED) {
+					butt_led_duties[5] = 0x100;
+				}
+				if (button_event[5] == BUTTON_RELEASED) {
+					butt_led_duties[5] = 0x0;
+				}
+				if (button_event[6] == BUTTON_PRESSED) {
+					butt_led_duties[6] = 0x100;
+				}
+				if (button_event[6] == BUTTON_RELEASED) {
+					butt_led_duties[6] = 0x0;
+				}
 				break;
 
 			case i_quadrature.rotate_event():
@@ -159,7 +181,7 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 				break;
 
 			case t_periodic when timerafter(time_periodic_trigger + PERIODIC_TIMER) :> time_periodic_trigger:
-				butt_duties[led_index] = new_duty;
+				butt_led_duties[led_index] = new_duty;
 				new_duty <<= 1;
 				//printintln(new_duty);
 				if (new_duty == 0x100) new_duty = 0x1;
@@ -185,21 +207,27 @@ int main(void) {
 
 	par {
   	on tile[0]: {
-  		unsigned butt_duties[8] = {128, 128, 128, 128, 128, 128, 128, 128};
+  		unsigned butt_led_duties[8] = {128, 128, 128, 128, 128, 128, 128, 128};
   		unsigned mbgr_duties[4] = {50, 100, 150, 200};
-			volatile unsigned * unsafe butt_duties_ptr;
+			volatile unsigned * unsafe butt_led_duties_ptr;
 			volatile unsigned * unsafe mbgr_duties_ptr;
-			unsafe{ butt_duties_ptr = butt_duties; mbgr_duties_ptr = mbgr_duties;}
+			unsafe{ butt_led_duties_ptr = butt_led_duties; mbgr_duties_ptr = mbgr_duties;}
+
 		  fl_QuadDeviceSpec qspi_spec = FL_QUADDEVICE_ISSI_IS25LQ016B;	//What we actually have on the explorer board
 		  //fl_QuadDeviceSpec qspi_spec = FL_QUADDEVICE_SPANSION_S25FL116K;	//What we are supposed to have on the explorer board
 
+		  set_port_drive_low(p_butt_leds); //These are pulled high to 5v so open drain drive best
+		  set_port_drive_low(p_bargraph); //As above
+
+		  for (int i = 0; i < 2; i++) set_port_pull_down(p_quadrature[i]); //Inputs are active high so pull down in chip
+
 			par {			
 				[[combine]] par {
-					pwm_wide_unbuffered(p_butt_leds, 8, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, butt_duties_ptr);
+					pwm_wide_unbuffered(p_butt_leds, 8, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, butt_led_duties_ptr);
 					pwm_wide_unbuffered(p_rgb_meter, 4, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, mbgr_duties_ptr);
 					quadrature(p_quadrature, i_quadrature);
 				}
-				app(4, i_buttons, butt_duties, mbgr_duties, i_quadrature, i_resistor, i_mp3_player, i_7_seg, i_led_matrix);
+				app(4, i_buttons, butt_led_duties, mbgr_duties, i_quadrature, i_resistor, i_mp3_player, c_atten, i_7_seg, i_led_matrix);
 				qspi_flash_fs_media(i_media, qspi_flash_ports, qspi_spec, 512);
 		    filesystem_basic(i_fs, 1, FS_FORMAT_FAT12, i_media);
 				mp3_player(i_fs[0], c_mp3_chan, c_mp3_stop, i_mp3_player);
@@ -209,6 +237,10 @@ int main(void) {
 		}
 		on tile[1]: {
 			p_phy_rst <: 0; //Hold eth phy in reset to keep it off the bus and save power - we want to use those pins
+			set_port_drive_low(p_7_seg); //These are pulled high to 5V so open drain drive best
+			for (int i = 0; i < LED_N_DIGITS; i++) set_port_drive_low(p_7_seg_com[i]); //as above
+			set_port_pull_down(p_butt); //Inputs are active high so pull down in chip
+
 			par{
 					while(1) {
 						decoderMain(c_pcm_chan, c_mp3_chan, c_mp3_stop);
