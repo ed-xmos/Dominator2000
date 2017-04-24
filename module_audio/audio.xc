@@ -12,6 +12,7 @@
 #define MP3_DATA_TRANSFER_SIZE	1500 //Must be bigger than one frame (417B)
 #define MP3_PCM_FRAME_SIZE	512	//samples. Must be multiple of 32
 #define UPSAMPLE_RATIO			8
+#define MAX_VOL 0x7fffffff	//int max (no volume attenuation)
 
 void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan, chanend c_mp3_stop
 	,server i_mp3_player_t i_mp3_player) {
@@ -161,16 +162,28 @@ static void src_simple(short * input_array, unsigned n_in_samples, unsigned char
 }
 #endif
 
+
+//Attenuation block (no saturation required)
+static inline int attenuator(int input, int multipler){
+  int result;
+  long long intermediate;
+  intermediate = (long long) input * (long long) multipler;
+  result = (int)(intermediate >> (32 - 1)); //31 because max_int = 2^31 - 1 
+  return result;
+}
+
 unsigned char pwm_test[] = { 0 , 10, 20, 30, 40, 50, 60, 70, 80, 90 , 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250};
 //MP3 pcm value set upper bit of first byte of index if stereo
 #define STEREO_FLAG	0x80
 #define BAD_FRAME	0x0100
 
-void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast) {
+void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast, chanend c_atten) {
 
 	short sample_buff[MP3_PCM_FRAME_SIZE];		//Stereo = 32x l+r words
 	unsigned char duty_dbl_buff[2][MP3_PCM_FRAME_SIZE * UPSAMPLE_RATIO];
 	int duty_dbl_buff_idx = 0;
+
+	int gain = MAX_VOL;
 
 	unsigned total_samps_this_frame = 0;
 	unsigned total_duties = 0;
@@ -212,16 +225,13 @@ void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast) {
   				if (is_stereo){
 	  				//When L & R received, mix them together and store into mono sample buff
 	  				if (channel == 1) {
-	  					sample_buff[(mp3_subframe_index >> 1) + total_samps_this_frame] = ((sample[0] >> 1) + (sample[1] >> 1));
+	  					short tmp = ((sample[0] >> 1) + (sample[1] >> 1));	//Mix both channels down
+	  					tmp = (short)(attenuator(((int)tmp) << 16, gain) >> 16); //Apply attenuation
+	  					sample_buff[(mp3_subframe_index >> 1) + total_samps_this_frame] = tmp;
 	  				}
 
 	  				// L&R are interleaved so it's L followed by R
 	  				channel ^= 1;
-
-	  				//printint(total_samps_this_frame); printstr(" index:"); printintln(mp3_subframe_index);
-	  				//printint(total_samps_this_frame); printstr(" pcm:"); printintln(sample);
-	  				//printint((mp3_subframe_index >> 1) + total_samps_this_frame); printstr(","); printintln(tmp_samp);
-
 
 	  				//fills in funny order with last entry of 64 sample block being index 35 for stereo, 17 for mono
 	  				if (mp3_subframe_index == 35) {
@@ -231,7 +241,9 @@ void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast) {
 	  			}//stereo
 
 	  			else { //mono
-	  				sample_buff[mp3_subframe_index + total_samps_this_frame] = sample[0];
+	  				short tmp = sample[0];
+	  				tmp = (short)(attenuator(((int)tmp) << 16, gain) >> 16); //Apply attenuation
+	  				sample_buff[mp3_subframe_index + total_samps_this_frame] = tmp;
 	  				if (mp3_subframe_index == 17) {
 	  					total_samps_this_frame += 32;
 	  				}
@@ -239,8 +251,6 @@ void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast) {
 
 
   				if (total_samps_this_frame == MP3_PCM_FRAME_SIZE){
-  					//printstr("Ready for SRC\n");
-  					//for(int i = 0; i < total_samps_this_frame; i++) {printint(sample_buff[i]); printstr(", ");} printstrln("");
 	          //Do SRC
 	          //src_simple(sample_buff, total_samps_this_frame, duty_dbl_buff[duty_dbl_buff_idx]);
 						src(sample_buff, total_samps_this_frame, duty_dbl_buff[duty_dbl_buff_idx], &src_ctrl);
@@ -258,6 +268,9 @@ void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast) {
 	          total_samps_this_frame = 0; //Reset frame
 	        }
 		    break;
+
+		   	case c_atten :> gain:
+		   		break;
 		}
 	}
 }

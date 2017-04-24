@@ -175,7 +175,7 @@ int main(void) {
 	i_resistor_t i_resistor;
 	streaming chan c_pwm_fast;
 	streaming chan c_mp3_chan;
-	chan c_pcm_chan, c_mp3_stop;
+	chan c_pcm_chan, c_mp3_stop, c_atten;
 	interface fs_basic_if i_fs[1];
   interface fs_storage_media_if i_media;
   interface i_mp3_player_t i_mp3_player;
@@ -214,7 +214,7 @@ int main(void) {
 						decoderMain(c_pcm_chan, c_mp3_chan, c_mp3_stop);
 						printstrln("Restart mp3");
 					}
-					pcm_post_process(c_pcm_chan, c_pwm_fast);
+					pcm_post_process(c_pcm_chan, c_pwm_fast, c_atten);
 					pwm_fast(c_pwm_fast, p_pwm_fast);
 					[[combine]] par {
 						resistor_reader(p_adc, i_resistor);
