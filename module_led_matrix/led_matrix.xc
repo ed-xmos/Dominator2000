@@ -85,6 +85,7 @@ static void show_sprite(client interface i2c_master_if i_i2c, const unsigned cha
 		intermediate >>= 1;
 		write_val = (unsigned char)intermediate;
 		result = i_i2c.write_reg(I2C_ADDR, row * 2, write_val);
+		//if (result == I2C_NACK) printstrln("I2C_NACK");
 	}
 }
 

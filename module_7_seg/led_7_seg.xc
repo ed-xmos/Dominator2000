@@ -24,7 +24,7 @@ static void update_display(unsigned disp_number, unsigned enabled, unsigned char
 	printf("number_string=%s\n", number_string);
 	for (int i = 0; i < LED_N_DIGITS; i++) {
 		unsigned char digit = (*(number_string + LED_N_DIGITS - 1 - i)) - '0';
-		printf("digit idx = %d\n", digit);
+		//printf("digit idx = %d\n", digit);
 		bit_map[i] = digit_map[digit];
 	}
 }
@@ -64,7 +64,7 @@ void led_7_seg(
 				//next mux line
 				common_idx++;
 				if (common_idx == LED_N_DIGITS) common_idx = 0;
-				//mux on
+				//new mux on
 				p_com[common_idx] <: 0;
 				break;
 
@@ -80,7 +80,7 @@ void led_7_seg(
 
 			case i_7seg.inc_val(void):
 				displayed_number += 1;
-				if (displayed_number > MAX_VAL) displayed_number = MAX_VAL; //Unsigned so no mindisp_number
+				if (displayed_number > MAX_VAL) displayed_number = MAX_VAL; 
 				update_display(displayed_number, enabled, bit_map);
 				break;
   

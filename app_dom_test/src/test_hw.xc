@@ -76,7 +76,8 @@ const char * sounds[] = {blaster, chewy, entdoor, explode, flashchg, hhgtelep, h
 	quattro, r2d2, spceinv1, spceinv2, spceinv3, strtrkbr, strtrklb, strtrkpl, strtrktr, tainted, teeandmo, vader};
 
 void bargraph_update(unsigned bits) {
-	unsigned write_val = (bits & 0x3) | (bits >> 4);
+	unsigned write_val = (bits & 0x3) | ((bits & 0xfffa) << 4); //bits 2..5 are not driven
+	write_val = ~write_val;	//Active low so invert
 	p_bargraph <: write_val;
 }
 
@@ -118,7 +119,7 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 				}
 				if (button_event[1] == BUTTON_PRESSED) {
 					const unsigned sprite_idxs[] = {2, 3};
-					i_led_matrix.scroll_sprites(sprite_idxs, 2);
+					i_led_matrix.scroll_text_msgprites("2", 1);
 				}
 				if (button_event[2] == BUTTON_PRESSED) {
 					const unsigned sprite_idxs[] = {2, 3};
@@ -144,6 +145,12 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 				if (button_event[6] == BUTTON_RELEASED) {
 					butt_led_duties[6] = 0x0;
 				}
+				if (button_event[7] == BUTTON_PRESSED) {
+					i_led_matrix.scroll_text_msgprites("7d", 2);
+				}
+				if (button_event[6] == BUTTON_RELEASED) {
+					i_led_matrix.scroll_text_msgprites("7u", 2);
+				}
 				break;
 
 			case i_quadrature.rotate_event():
@@ -158,7 +165,7 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 					printstr("+");
 				}
 				if (rotation == -1) {
-					i_7_seg.inc_val();
+					i_7_seg.dec_val();
 					printstr("-");
 				}
 				break;
@@ -173,7 +180,7 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 				unsigned scaled = val / 1000;
 				if (scaled > 100) scaled = 100;
 				bargraph_update(1 << scaled);
-				mbgr_duties[1] = scaled;	//Meter
+				mbgr_duties[0] = scaled;	//Meter
 
 				mbgr_duties[1] = rgb_pallette[4 * scaled + 2];	//Blue
 				mbgr_duties[2] = rgb_pallette[4 * scaled + 1];	//Green
@@ -232,7 +239,7 @@ int main(void) {
 		    filesystem_basic(i_fs, 1, FS_FORMAT_FAT12, i_media);
 				mp3_player(i_fs[0], c_mp3_chan, c_mp3_stop, i_mp3_player);
 				i2c_master(i_i2c, 1, p_scl, p_sda, 400);
-				led_matrix(i_led_matrix, i_i2c[0], 5);
+				led_matrix(i_led_matrix, i_i2c[0], 3);
 			}
 		}
 		on tile[1]: {
