@@ -1,7 +1,7 @@
 #include <xs1.h>
 
 #define LED_N_DIGITS	2
-#define MAX_VAL ((10 * LED_N_DIGITS) - 1)
+#define MAX_VAL 99
 #define MUX_DELAY		1000000	//10ms
 
 typedef interface i_7_seg_t {
