@@ -119,7 +119,7 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 				}
 				if (button_event[1] == BUTTON_PRESSED) {
 					const unsigned sprite_idxs[] = {2, 3};
-					i_led_matrix.scroll_text_msgprites("2", 1);
+					i_led_matrix.scroll_text_msg("2", 1);
 				}
 				if (button_event[2] == BUTTON_PRESSED) {
 					const unsigned sprite_idxs[] = {2, 3};
@@ -146,10 +146,10 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 					butt_led_duties[6] = 0x0;
 				}
 				if (button_event[7] == BUTTON_PRESSED) {
-					i_led_matrix.scroll_text_msgprites("7d", 2);
+					i_led_matrix.scroll_text_msg("7d", 2);
 				}
 				if (button_event[6] == BUTTON_RELEASED) {
-					i_led_matrix.scroll_text_msgprites("7u", 2);
+					i_led_matrix.scroll_text_msg("7u", 2);
 				}
 				break;
 
