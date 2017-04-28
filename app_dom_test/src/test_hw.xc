@@ -169,6 +169,7 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 				break;
 
 			case i_quadrature.rotate_event():
+#if 1
 				static int last_rotation = 0;
 				int rotation = i_quadrature.get_count();
 				if (last_rotation != rotation) {
@@ -185,13 +186,11 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 				}
 				unsigned count = i_7_seg.get_val();
 				bargraph_update(1 << count / 10);
-
+#endif
 				break;
 
 			case i_resistor.value_change_event():
 				unsigned val = (unsigned)i_resistor.get_val();
-
-				mbgr_duties[0] = (val * 256) / 1000;	//Meter
 
 				//printintln(val);
 				q8_24 log_input = (q8_24)((val<<16) + 0x1000000);
@@ -199,7 +198,9 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 				q8_24 lin_output = dsp_math_log(log_input);
 				val = (unsigned) (lin_output);
 				unsigned scaled = val >> 18;
-				printintln(scaled);
+				//printintln(scaled);
+				mbgr_duties[0] = scaled;	//Meter
+
 
 				mbgr_duties[1] = rgb_pallette[4 * scaled + 2];	//Blue
 				mbgr_duties[2] = rgb_pallette[4 * scaled + 1];	//Green
