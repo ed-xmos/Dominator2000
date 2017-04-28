@@ -149,22 +149,27 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 					if (led_index < 0) led_index = 4;
 				}
 				if (button_event[5] == BUTTON_PRESSED) {
-					butt_led_duties[5] = 0x100;
+					i_led_matrix.scroll_text_msg("su", 2);
+					
 				}
 				if (button_event[5] == BUTTON_RELEASED) {
-					butt_led_duties[5] = 0x0;
+					i_led_matrix.scroll_text_msg("sd", 2);
+
 				}
 				if (button_event[6] == BUTTON_PRESSED) {
-					butt_led_duties[6] = 0x100;
+					butt_led_duties[5] = 0x100;
 				}
 				if (button_event[6] == BUTTON_RELEASED) {
-					butt_led_duties[6] = 0x0;
+					butt_led_duties[5] = 0x0;
 				}
 				if (button_event[7] == BUTTON_PRESSED) {
-					i_led_matrix.scroll_text_msg("7u", 2);
+					i_led_matrix.scroll_text_msg("Mu", 2);
+					butt_led_duties[6] = 0x00;
 				}
-				if (button_event[7 ] == BUTTON_RELEASED) {
-					i_led_matrix.scroll_text_msg("7d", 2);
+				if (button_event[7] == BUTTON_RELEASED) {
+					i_led_matrix.scroll_text_msg("Md", 2);
+					butt_led_duties[6] = 0x100;
+
 				}
 				break;
 
@@ -250,11 +255,10 @@ int main(void) {
 
 			par {			
 				[[combine]] par {
-					pwm_wide_unbuffered(p_butt_leds, 8, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, butt_led_duties_ptr);
 					pwm_wide_unbuffered(p_rgb_meter, 4, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, mbgr_duties_ptr);
 					quadrature(p_quadrature, i_quadrature);	//This doesn't like being non-combined (exception)
-
 				}
+				pwm_wide_unbuffered(p_butt_leds, 8, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, butt_led_duties_ptr);
 				app(i_buttons, butt_led_duties, mbgr_duties, i_quadrature, i_resistor, i_mp3_player, c_atten, i_7_seg, i_led_matrix);
 				qspi_flash_fs_media(i_media, qspi_flash_ports, qspi_spec, 512);
 		    filesystem_basic(i_fs, 1, FS_FORMAT_FAT12, i_media);
