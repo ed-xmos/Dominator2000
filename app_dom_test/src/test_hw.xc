@@ -34,7 +34,9 @@ fl_QSPIPorts qspi_flash_ports = {
 };
 
 on tile[0]: out port p_butt_leds = XS1_PORT_8B; //X0D14..21
-on tile[0]: out port p_bargraph = XS1_PORT_16B; //X0D26..27, X0D32..39
+on tile[0]: out port p_bargraph = XS1_PORT_16B; //X0D26..27, X0D36..39
+on tile[0]: out port p_bargraph3 = XS1_PORT_1K; //X0D34
+on tile[0]: out port p_bargraph4 = XS1_PORT_1L; //X0D35
 on tile[0]: in port p_quadrature[2] = {XS1_PORT_1G, XS1_PORT_1H}; //X0D22,33
 on tile[0]: out port p_rgb_meter = XS1_PORT_4F; //X0D28..31
 on tile[0]: port p_scl = XS1_PORT_1E; //X0D12
@@ -76,15 +78,27 @@ const char * sounds[] = {blaster, chewy, entdoor, explode, flashchg, hhgtelep, h
 	quattro, r2d2, spceinv1, spceinv2, spceinv3, strtrkbr, strtrklb, strtrkpl, strtrktr, tainted, teeandmo, vader};
 
 void bargraph_update(unsigned bits) {
-	unsigned write_val = (bits & 0x3) | ((bits & 0xfffa) << 4); //bits 2..5 are not driven
+	unsigned write_val = 0;
+	if (bits & 0x001) write_val |= 0x001;
+	if (bits & 0x002) write_val |= 0x002;
+	if (bits & 0x004) write_val |= 0x040;
+	if (bits & 0x008) write_val |= 0x080;
+	if (bits & 0x040) write_val |= 0x100;
+	if (bits & 0x080) write_val |= 0x200;
+	if (bits & 0x100) write_val |= 0x400;
+	if (bits & 0x200) write_val |= 0x800;
 	write_val = ~write_val;	//Active low so invert
 	p_bargraph <: write_val;
+		if (bits & 0x10) p_bargraph3 <: 0;
+	else p_bargraph3 <: 1;
+	if (bits & 0x20) p_bargraph4 <: 0;
+	else p_bargraph4 <: 1;
 }
 
 #define PERIODIC_TIMER	8000000	//80ms app timer
 
 [[combinable]]
-void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbgr_duties[4],
+void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbgr_duties[4],
 	client i_quadrature_t i_quadrature, client i_resistor_t i_resistor, client i_mp3_player_t i_mp3_player, chanend c_atten,
 	client i_7_seg_t i_7_seg, client i_led_matrix_t i_led_matrix) {
 	
@@ -103,19 +117,28 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 
 	i_led_matrix.scroll_text_msg("Domitron 2000", 13);
 
+	while(0){
+		for(int i=0; i<16; i++){
+			printintln(i);
+			p_bargraph <: ~(1 << i);
+			delay_seconds(1);
+		}
+	}
+
 	while(1) {
 		select {
 			case i_buttons.buttons_event():
 				i_buttons.get_state(button_event);
 				//printstrln("New buttons:");
-				for (int i=0; i<port_bits; i++) {
-					//printintln(button_event[i]);
+				for (int i=0; i<8; i++) {
+					//printint(button_event[i]); if (i=7) printstrln("");
 				}
+
 				if (button_event[0] == BUTTON_PRESSED) {
 					i_mp3_player.play_file(sounds[sound_idx], strlen(sounds[sound_idx]) + 1); //+1 because of the terminator
 					printstrln(sounds[sound_idx]);
-					if (sound_idx == n_sounds) sound_idx = 0;
 					sound_idx++;
+					if (sound_idx == n_sounds) sound_idx = 0;
 				}
 				if (button_event[1] == BUTTON_PRESSED) {
 					const unsigned sprite_idxs[] = {2, 3};
@@ -146,10 +169,10 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 					butt_led_duties[6] = 0x0;
 				}
 				if (button_event[7] == BUTTON_PRESSED) {
-					i_led_matrix.scroll_text_msg("7d", 2);
-				}
-				if (button_event[6] == BUTTON_RELEASED) {
 					i_led_matrix.scroll_text_msg("7u", 2);
+				}
+				if (button_event[7 ] == BUTTON_RELEASED) {
+					i_led_matrix.scroll_text_msg("7d", 2);
 				}
 				break;
 
@@ -157,17 +180,20 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 				static int last_rotation = 0;
 				int rotation = i_quadrature.get_count();
 				if (last_rotation != rotation) {
-					printstrln("");
+					//printstrln("");
 					last_rotation = rotation;
 				}
 				if (rotation == 1) {
 					i_7_seg.inc_val();
-					printstr("+");
+					//printstr("+");
 				}
 				if (rotation == -1) {
 					i_7_seg.dec_val();
-					printstr("-");
+					//printstr("-");
 				}
+				unsigned count = i_7_seg.get_val();
+				bargraph_update(1 << count / 10);
+
 				break;
 
 			case i_resistor.value_change_event():
@@ -179,7 +205,7 @@ void app(static const unsigned port_bits, client i_buttons_t i_buttons, unsigned
 				printuintln(val);
 				unsigned scaled = val / 1000;
 				if (scaled > 100) scaled = 100;
-				bargraph_update(1 << scaled);
+				
 				mbgr_duties[0] = scaled;	//Meter
 
 				mbgr_duties[1] = rgb_pallette[4 * scaled + 2];	//Blue
@@ -234,7 +260,7 @@ int main(void) {
 					pwm_wide_unbuffered(p_rgb_meter, 4, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, mbgr_duties_ptr);
 					quadrature(p_quadrature, i_quadrature);
 				}
-				app(4, i_buttons, butt_led_duties, mbgr_duties, i_quadrature, i_resistor, i_mp3_player, c_atten, i_7_seg, i_led_matrix);
+				app(i_buttons, butt_led_duties, mbgr_duties, i_quadrature, i_resistor, i_mp3_player, c_atten, i_7_seg, i_led_matrix);
 				qspi_flash_fs_media(i_media, qspi_flash_ports, qspi_spec, 512);
 		    filesystem_basic(i_fs, 1, FS_FORMAT_FAT12, i_media);
 				mp3_player(i_fs[0], c_mp3_chan, c_mp3_stop, i_mp3_player);
@@ -256,10 +282,10 @@ int main(void) {
 					pcm_post_process(c_pcm_chan, c_pwm_fast, c_atten);
 					pwm_fast(c_pwm_fast, p_pwm_fast);
 					[[combine]] par {
-						resistor_reader(p_adc, i_resistor);
-						port_input_debounced(p_butt, 4, i_buttons);
-						led_7_seg(i_7_seg, p_7_seg, p_7_seg_com);
+						//resistor_reader(p_adc, i_resistor);
+						port_input_debounced(p_butt, 8, i_buttons);
 					}
+					led_7_seg(i_7_seg, p_7_seg, p_7_seg_com);
 				}
 			}
 		}
