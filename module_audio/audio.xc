@@ -25,7 +25,7 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
 	printf("Mounting filesystem...\n");
   result = i_fs.mount();
   if (result != FS_RES_OK) {
-    printf("result = %d\n", result);
+    printf("mounting result = %d\n", result);
     exit(1);
   }
 
@@ -33,7 +33,7 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
 	  printf("Opening file...\n");
 	  result = i_fs.open(filename, sizeof(filename));
 	  if (result != FS_RES_OK) {
-	    printf("result = %d\n", result);
+	    printf("opening result = %d\n", result);
 	    exit(1);
 	  }
 
@@ -41,14 +41,14 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
 	  size_t file_size;
 	  result = i_fs.size(file_size);
 	  if (result != FS_RES_OK) {
-	    printf("result = %d\n", result);
+	    printf("file size get result = %d\n", result);
 	    exit(1);
 	  }
 	 
 	  printf("Seeking back to beginning of file...\n");
 	  result = i_fs.seek(0, 1);
 	  if (result != FS_RES_OK) {
-	    printf("result = %d\n", result);
+	    printf("seek result = %d\n", result);
 	    exit(1);
 	  }
 
