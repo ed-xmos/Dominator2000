@@ -47,8 +47,8 @@ void port_input_debounced(in port p_input, static const unsigned width, server i
 						for (int i=0; i<width; i++) {
 							changes = old_port_val ^ new_port_val;
 							if ( (0x1 << i) & changes) {
-								if ( (0x1 << i) & new_port_val) button_event_log[i] = BUTTON_RELEASED;
-								else button_event_log[i] = BUTTON_PRESSED;
+								if ( (0x1 << i) & new_port_val) button_event_log[i] = BUTTON_PRESSED;
+								else button_event_log[i] = BUTTON_RELEASED;
 							} 
 							else {
 								button_event_log[i] = BUTTON_NOCHANGE;
