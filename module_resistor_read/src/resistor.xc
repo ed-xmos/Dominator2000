@@ -3,8 +3,8 @@
 #include "resistor.h"
 
 #define ADC_READ_INTERVAL   5000000      //50 milliseconds in between conversions
-#define ADC_CHARGE_PERIOD    100000      //1000 microseconds to charge cap
-#define ADC_NOISE_DEADBAND        1      // change of 1/256 will not trigger  
+#define ADC_CHARGE_PERIOD     20000      //200 microseconds to charge cap
+#define ADC_NOISE_DEADBAND        2      // change of 1/256 will not trigger  
 
 #define ABS(x) ((x)<0 ? (-x) : (x))
 
@@ -14,8 +14,10 @@ static enum adc_state{
         ADC_CONVERTING
 }adc_state;
 
-static int linearise(int discharge_time) {
-  return (discharge_time - 512)/890;
+static int remove_offset(int discharge_time) {
+  int offsetted = (discharge_time - 270);
+  if (offsetted < 0) offsetted = 0;
+  return offsetted;
 }
 
 [[combinable]]
@@ -55,14 +57,11 @@ void resistor_reader(port p_adc, server i_resistor_t i_resistor) {
 
       case (adc_state == ADC_CONVERTING) => p_adc when pinseq(0) :> int _:
         t_periodic :> discharge_end_time;
-        unsigned discharge_time;
-        if (discharge_end_time < discharge_end_time) discharge_time = (discharge_end_time + 0x10000) - discharge_start_time;
-        else discharge_time = discharge_end_time - discharge_start_time;
-        //TODO = process properly and add deadband & event
+        unsigned discharge_time = discharge_end_time - discharge_start_time;
         int upper = (last_discharge_time * (256 + ADC_NOISE_DEADBAND)) >> 8;
         int lower = (last_discharge_time * (256 - ADC_NOISE_DEADBAND)) >> 8;
         if ((discharge_time > upper) || (discharge_time < lower)) {
-          processed_val = linearise(discharge_time);
+          processed_val = remove_offset(discharge_time);
           i_resistor.value_change_event();
           last_discharge_time = discharge_time;
         }

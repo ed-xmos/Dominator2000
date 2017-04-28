@@ -117,14 +117,6 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 
 	i_led_matrix.scroll_text_msg("Domitron 2000", 13);
 
-	while(0){
-		for(int i=0; i<16; i++){
-			printintln(i);
-			p_bargraph <: ~(1 << i);
-			delay_seconds(1);
-		}
-	}
-
 	while(1) {
 		select {
 			case i_buttons.buttons_event():
@@ -198,15 +190,16 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 
 			case i_resistor.value_change_event():
 				unsigned val = (unsigned)i_resistor.get_val();
-				printuintln(val);
-				q8_24 log_input = (q8_24)val;
+
+				mbgr_duties[0] = (val * 256) / 1000;	//Meter
+
+				//printintln(val);
+				q8_24 log_input = (q8_24)((val<<16) + 0x1000000);
+				//printintln(val);
 				q8_24 lin_output = dsp_math_log(log_input);
 				val = (unsigned) (lin_output);
-				printuintln(val);
-				unsigned scaled = val / 1000;
-				if (scaled > 100) scaled = 100;
-				
-				mbgr_duties[0] = scaled;	//Meter
+				unsigned scaled = val >> 18;
+				printintln(scaled);
 
 				mbgr_duties[1] = rgb_pallette[4 * scaled + 2];	//Blue
 				mbgr_duties[2] = rgb_pallette[4 * scaled + 1];	//Green
@@ -258,8 +251,8 @@ int main(void) {
 				[[combine]] par {
 					pwm_wide_unbuffered(p_butt_leds, 8, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, butt_led_duties_ptr);
 					pwm_wide_unbuffered(p_rgb_meter, 4, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, mbgr_duties_ptr);
-					quadrature(p_quadrature, i_quadrature);
 				}
+				quadrature(p_quadrature, i_quadrature);
 				app(i_buttons, butt_led_duties, mbgr_duties, i_quadrature, i_resistor, i_mp3_player, c_atten, i_7_seg, i_led_matrix);
 				qspi_flash_fs_media(i_media, qspi_flash_ports, qspi_spec, 512);
 		    filesystem_basic(i_fs, 1, FS_FORMAT_FAT12, i_media);
@@ -282,7 +275,7 @@ int main(void) {
 					pcm_post_process(c_pcm_chan, c_pwm_fast, c_atten);
 					pwm_fast(c_pwm_fast, p_pwm_fast);
 					[[combine]] par {
-						//resistor_reader(p_adc, i_resistor);
+						resistor_reader(p_adc, i_resistor);
 						port_input_debounced(p_butt, 8, i_buttons);
 					}
 					led_7_seg(i_7_seg, p_7_seg, p_7_seg_com);
