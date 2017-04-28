@@ -1,18 +1,20 @@
 #include <xs1.h>
 #include <stdio.h>
+#include <print.h>
+#include <xclib.h>
 #include "led_7_seg.h"
 
 //Which segments to light for a given number
 const unsigned char digit_map[] = {
 	//abcdefg.
-	0b11111110, //0
+	0b11111100, //0
 	0b01100000, //1
 	0b11011010, //2
 	0b11110010,	//3
 	0b01100110,	//4
 	0b10110110,	//5
 	0b10111110,	//6
-	0b11100100,	//7
+	0b11100000,	//7
 	0b11111110, //8
 	0b11110110, //9
 };
@@ -21,11 +23,12 @@ const unsigned char digit_map[] = {
 static void update_display(unsigned disp_number, unsigned enabled, unsigned char bit_map[]) {
 	char number_string[LED_N_DIGITS + 1];
 	sprintf(number_string, "%02d", disp_number);
-	printf("number_string=%s\n", number_string);
+	//printf("ns=%s\n", number_string);
 	for (int i = 0; i < LED_N_DIGITS; i++) {
-		unsigned char digit = (*(number_string + LED_N_DIGITS - 1 - i)) - '0';
+		unsigned char digit = (*(number_string + i)) - '0';
 		//printf("digit idx = %d\n", digit);
 		bit_map[i] = digit_map[digit];
+		bit_map[i] = (unsigned char)(bitrev ((unsigned)bit_map[i] << 24) );
 	}
 }
 
@@ -52,6 +55,14 @@ void led_7_seg(
 
 	update_display(displayed_number, enabled, bit_map);
 
+	#if 0
+	p_com[0] <: 0;
+	for (int i=0; i<8;i++){
+		p_segments <: ~(0x1 << i);
+		delay_seconds(1);
+	}
+	#endif
+
 	while(1){
 		select{
 
@@ -59,7 +70,7 @@ void led_7_seg(
 				//current mux off
 				p_com[common_idx] <: 1;
 				//change display
-				p_segments <: bit_map[common_idx];
+				p_segments <: ~bit_map[common_idx];
 
 				//next mux line
 				common_idx++;
