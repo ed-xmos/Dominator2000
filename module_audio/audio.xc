@@ -12,7 +12,6 @@
 #define MP3_DATA_TRANSFER_SIZE	1500 //Must be bigger than one frame (417B)
 #define MP3_PCM_FRAME_SIZE	512	//samples. Must be multiple of 32
 #define UPSAMPLE_RATIO			8
-#define MAX_VOL 0x7fffffff	//int max (no volume attenuation)
 
 void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan, chanend c_mp3_stop
 	,server i_mp3_player_t i_mp3_player) {
@@ -192,7 +191,7 @@ void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast, chanend 
 	unsigned char duty_dbl_buff[2][MP3_PCM_FRAME_SIZE * UPSAMPLE_RATIO];
 	int duty_dbl_buff_idx = 0;
 
-	int gain = MAX_VOL;
+	int gain = INIT_VOL;
 
 	unsigned total_samps_this_frame = 0;
 	unsigned total_duties = 0;

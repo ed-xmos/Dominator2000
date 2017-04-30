@@ -1,7 +1,8 @@
 #ifndef __AUDIO__
 #define __AUDIO__
 #include "filesystem.h"
-
+#define MAX_VOL 0x7fffffff	//int max (no volume attenuation)
+#define INIT_VOL (MAX_VOL >> 2) //About 12db down at startup
 
 typedef interface i_mp3_player_t {
 	void play_file(const char filename[], size_t len_filename);

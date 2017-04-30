@@ -41,6 +41,7 @@ on tile[0]: in port p_quadrature[2] = {XS1_PORT_1G, XS1_PORT_1H}; //X0D22,33
 on tile[0]: out port p_rgb_meter = XS1_PORT_4F; //X0D28..31
 on tile[0]: port p_scl = XS1_PORT_1E; //X0D12
 on tile[0]: port p_sda = XS1_PORT_1F; //X0D13
+on tile[0]: in port p_red_butt = XS1_PORT_4A; //Bit 2 X0D08
 
 on tile[1]: port p_adc = XS1_PORT_1A;	//X1D0
 on tile[1]: buffered out port:32 p_pwm_fast = XS1_PORT_1C; //X1D10 TP14 R29(1k5)
@@ -175,6 +176,19 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 				}
 				break;
 
+			case p_red_butt when pinsneq(0) :> int red_butt:
+				unsigned val = (unsigned)i_resistor.get_val();
+				val = (val * 42) >> 4; // * 42 / 16 to get to max just under 32K
+				val = (val << 16);  //scale up to just under max int;
+				if (val > MAX_VOL) val = MAX_VOL;
+				c_atten <: val;
+				printintln(val);
+				//Entdoor
+				i_mp3_player.play_file(sounds[2], strlen(sounds[2]) + 1); //+1 because of the terminator
+				red_butt = ~0;
+				while (red_butt) p_red_butt :> red_butt; //Wait for release
+				break;
+
 			case i_quadrature.rotate_event():
 #if 1
 				static int last_rotation = 0;
@@ -252,6 +266,7 @@ int main(void) {
 
 		  set_port_drive_low(p_butt_leds); //These are pulled high to 5v so open drain drive best
 		  set_port_drive_low(p_bargraph); //As above
+		  set_port_pull_down(p_red_butt); //So we can see it pulled high on press
 
 		  for (int i = 0; i < 2; i++) set_port_pull_down(p_quadrature[i]); //Inputs are active high so pull down in chip
 
