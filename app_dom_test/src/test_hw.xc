@@ -120,17 +120,19 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 	while(1) {
 		select {
 			case i_buttons.buttons_event():
+				//printchar('.');
 				i_buttons.get_state(button_event);
 				//printstrln("New buttons:");
 				for (int i=0; i<8; i++) {
-					//printint(button_event[i]); if (i=7) printstrln("");
+					//if (button_event[i] == BUTTON_PRESSED) printintln(i);
 				}
 
 				if (button_event[0] == BUTTON_PRESSED) {
 					i_mp3_player.play_file(sounds[sound_idx], strlen(sounds[sound_idx]) + 1); //+1 because of the terminator
-					printstrln(sounds[sound_idx]);
+					//printstrln(sounds[sound_idx]);
 					sound_idx++;
 					if (sound_idx == n_sounds) sound_idx = 0;
+					i_led_matrix.scroll_text_msg("1", 1);
 				}
 				if (button_event[1] == BUTTON_PRESSED) {
 					const unsigned sprite_idxs[] = {2, 3};
@@ -203,9 +205,9 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 				q8_24 lin_output = dsp_math_log(log_input);
 				val = (unsigned) (lin_output);
 				unsigned scaled = val >> 18;
+				if (scaled > 255) scaled = 255; //clip
 				//printintln(scaled);
 				mbgr_duties[0] = scaled;	//Meter
-
 
 				mbgr_duties[1] = rgb_pallette[4 * scaled + 2];	//Blue
 				mbgr_duties[2] = rgb_pallette[4 * scaled + 1];	//Green
@@ -253,6 +255,8 @@ int main(void) {
 
 		  for (int i = 0; i < 2; i++) set_port_pull_down(p_quadrature[i]); //Inputs are active high so pull down in chip
 
+		  delay_milliseconds(500);	//Allow amp to power up
+
 			par {			
 				[[combine]] par {
 					pwm_wide_unbuffered(p_rgb_meter, 4, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, mbgr_duties_ptr);
@@ -273,14 +277,20 @@ int main(void) {
 			for (int i = 0; i < LED_N_DIGITS; i++) set_port_drive_low(p_7_seg_com[i]); //as above
 			set_port_pull_down(p_butt); //Inputs are active high so pull down in chip
 
+		  delay_milliseconds(500);	//Allow amp to power up
+
 			par{
 					while(1) {
 						decoderMain(c_pcm_chan, c_mp3_chan, c_mp3_stop);
-						printstrln("Restart mp3");
+						//printstrln("Restart mp3");
 					}
-					pcm_post_process(c_pcm_chan, c_pwm_fast, c_atten);
+					{
+						set_core_high_priority_on();
+						pcm_post_process(c_pcm_chan, c_pwm_fast, c_atten);
+					}
 					pwm_fast(c_pwm_fast, p_pwm_fast);
-					[[combine]] par {
+					par {
+					//[[combine]] par {
 						resistor_reader(p_adc, i_resistor);
 						port_input_debounced(p_butt, 8, i_buttons);
 					}

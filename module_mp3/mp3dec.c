@@ -394,7 +394,7 @@ int MP3Decode(HMP3Decoder hMP3Decoder, unsigned char **inbuf, int *bytesLeft, sh
 			offset = DecodeHuffman(mp3DecInfo, mainPtr, &bitOffset, huffBlockBits, gr, ch);
 			if (offset < 0)
 			{
-				fail();
+				//fail();
 				MP3ClearBadFrame(mp3DecInfo, pcmChan);
 				return ERR_MP3_INVALID_HUFFCODES;
 			}

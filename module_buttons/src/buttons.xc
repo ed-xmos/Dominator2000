@@ -26,7 +26,7 @@ void port_input_debounced(in port p_input, static const unsigned width, server i
 				memcpy(button_event, button_event_log, sizeof(button_event_log));
 				break;
 
-			case !debounce_state => p_input when pinsneq(old_port_val) :> int new_port_val:
+			case (debounce_state == 0) => p_input when pinsneq(old_port_val) :> int new_port_val:
 				debounce_state = DEBOUNCE_READS_N;
 				t :> trigger_time;
 				trigger_time += DEBOUNCE_READ_INTERVAL_TICKS;

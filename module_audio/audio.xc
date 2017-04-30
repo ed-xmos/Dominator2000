@@ -21,8 +21,17 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
   //This is DOS 8.3 so 16 enough..
   char filename[16] = "PROTONPK.MP3";	//Startup sound
 
+#if 0
+  while(1){
+	select {
+		case i_mp3_player.play_file(const char new_filename[], size_t n):
+			printstrln("MP3");
+			break;
+		}
+	}
+#endif
 
-	printf("Mounting filesystem...\n");
+	//printf("Mounting filesystem...\n");
   result = i_fs.mount();
   if (result != FS_RES_OK) {
     printf("mounting result = %d\n", result);
@@ -30,14 +39,14 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
   }
 
   while (2) {
-	  printf("Opening file...\n");
+	  //printf("Opening file...\n");
 	  result = i_fs.open(filename, sizeof(filename));
 	  if (result != FS_RES_OK) {
 	    printf("opening result = %d\n", result);
 	    exit(1);
 	  }
 
-	  printf("Getting file size...\n");
+	  //printf("Getting file size...\n");
 	  size_t file_size;
 	  result = i_fs.size(file_size);
 	  if (result != FS_RES_OK) {
@@ -45,7 +54,7 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
 	    exit(1);
 	  }
 	 
-	  printf("Seeking back to beginning of file...\n");
+	  //printf("Seeking back to beginning of file...\n");
 	  result = i_fs.seek(0, 1);
 	  if (result != FS_RES_OK) {
 	    printf("seek result = %d\n", result);
@@ -53,7 +62,7 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
 	  }
 
 
-		printf("Playing mp3 file %s\n", filename);
+		//printf("Playing mp3 file %s\n", filename);
 	  
 
 		unsigned char tmp_buff[512];
@@ -81,7 +90,7 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
 		 	select {
 				case i_mp3_player.play_file(const char new_filename[], size_t n):
 					memcpy(filename, new_filename, n);
-					printf("Opening file(0)...\n");
+					//printf("Opening file(0)...\n");
 					result = i_fs.open(filename, sizeof(filename));
 					if (result != FS_RES_OK) {
 					  printf("result = %d\n", result);
@@ -97,13 +106,13 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
 			}
 		}
 		c_mp3_chan <: 0xDEADBEEF;
-		printstrln("MP3 player sent terminate\n");
+		//printstrln("MP3 player sent terminate\n");
 
 		//This blocks as we want to wait for the next sound
 		select {
 			case i_mp3_player.play_file(const char new_filename[], size_t n):
 				memcpy(filename, new_filename, n);
-				printf("Opening file (1)...\n");
+				//printf("Opening file (1)...\n");
 				result = i_fs.open(filename, sizeof(filename));
 				if (result != FS_RES_OK) {
 				  printf("result = %d\n", result);
@@ -197,7 +206,7 @@ void pcm_post_process(chanend c_pcm_chan, streaming chanend c_pwm_fast, chanend 
 	c_pwm_fast <: (int)pwm_test;
 	c_pwm_fast <: sizeof(pwm_test);
 
-	printstrln("pcm_post_process started");
+	//printstrln("pcm_post_process started");
 
 	while(1){
 		select {
