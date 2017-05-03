@@ -237,7 +237,7 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 					val = (val << 16);  //scale up to just under max int;
 					if (val > MAX_VOL) val = MAX_VOL;
 					c_atten <: val;
-					printintln(val);
+					//printintln(val);
 					if (!i_mp3_player.is_playing()) {
 						if (i_7_seg.get_val() == 42) i_mp3_player.play_file(sounds[20], strlen(sounds[20]) + 1); //Tee and mo
 						else i_mp3_player.play_file(sounds[2], strlen(sounds[2]) + 1); //Entdoor
