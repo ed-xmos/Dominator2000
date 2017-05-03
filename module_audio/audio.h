@@ -6,6 +6,7 @@
 
 typedef interface i_mp3_player_t {
 	void play_file(const char filename[], size_t len_filename);
+	unsigned is_playing(void);
 } i_mp3_player_t;
 
 void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan, chanend c_mp3_stop ,server i_mp3_player_t i_mp3_player);

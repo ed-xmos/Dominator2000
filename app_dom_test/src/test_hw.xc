@@ -52,27 +52,27 @@ on tile[1]: out port p_7_seg_com[LED_N_DIGITS] = {XS1_PORT_1L, XS1_PORT_1O};	//X
 
 
 //MP3 files
-const char blaster[] = "BLASTER.MP3";	
+const char blaster[] = "BLASTER.MP3";	//0
 const char chewy[] = "CHEWY.MP3";
 const char entdoor[] = "ENTDOOR.MP3";
 const char explode[] = "EXPLODE.MP3";
 const char flashchg[] = "FLASHCHG.MP3";
-const char hhgtelep[] = "HHGTELEP.MP3";
+const char hhgtelep[] = "HHGTELEP.MP3"; //5
 const char hithere[] = "HITHERE.MP3";
 const char laser2[] = "LASER2.MP3";
 const char lightsbr[] = "LIGHTSBR.MP3";
 const char protonpk[] = "PROTONPK.MP3";
-const char quattro[] = "QUATTRO.MP3";
+const char quattro[] = "QUATTRO.MP3"; //10
 const char r2d2[] = "R2D2.MP3";
 const char spceinv1[] = "SPCEINV1.MP3";
 const char spceinv2[] = "SPCEINV2.MP3";
 const char spceinv3[] = "SPCEINV3.MP3";
-const char strtrkbr[] = "STRTRKBR.MP3";
+const char strtrkbr[] = "STRTRKBR.MP3"; //15
 const char strtrklb[] = "STRTRKLB.MP3";
 const char strtrkpl[] = "STRTRKPL.MP3";
 const char strtrktr[] = "STRTRKTR.MP3";
 const char tainted[] = "TAINTED.MP3";
-const char teeandmo[] = "TEEANDMO.MP3";
+const char teeandmo[] = "TEEANDMO.MP3"; //20
 const char vader[] = "VADER.MP3";
 
 const char * sounds[] = {blaster, chewy, entdoor, explode, flashchg, hhgtelep, hithere, laser2, lightsbr, protonpk, 
@@ -96,7 +96,7 @@ void bargraph_update(unsigned bits) {
 	else p_bargraph4 <: 1;
 }
 
-#define PERIODIC_TIMER	8000000	//80ms app timer
+#define PERIODIC_TIMER	1000000	//10ms app timer
 
 [[combinable]]
 void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbgr_duties[4],
@@ -105,6 +105,8 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 	
 	const unsigned n_sounds = sizeof(sounds) / sizeof(const char *);
 	unsigned sound_idx = 0;
+
+	unsigned red_butt_count = 0;
 
 	button_event_t button_event[MAX_INPUT_PORT_BITS] = {0};
 
@@ -146,10 +148,12 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 				if (button_event[3] == BUTTON_PRESSED) {
 					led_index++;
 					if (led_index > 4) led_index = 0;
+					i_led_matrix.scroll_text_msg("3", 1);
 				}
 				if (button_event[4] == BUTTON_PRESSED) {
 					led_index--;
 					if (led_index < 0) led_index = 4;
+					i_led_matrix.scroll_text_msg("4", 1);
 				}
 				if (button_event[5] == BUTTON_PRESSED) {
 					i_led_matrix.scroll_text_msg("su", 2);
@@ -176,18 +180,6 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 				}
 				break;
 
-			case p_red_butt when pinsneq(0) :> int red_butt:
-				unsigned val = (unsigned)i_resistor.get_val();
-				val = (val * 42) >> 4; // * 42 / 16 to get to max just under 32K
-				val = (val << 16);  //scale up to just under max int;
-				if (val > MAX_VOL) val = MAX_VOL;
-				c_atten <: val;
-				printintln(val);
-				//Entdoor
-				i_mp3_player.play_file(sounds[2], strlen(sounds[2]) + 1); //+1 because of the terminator
-				red_butt = ~0;
-				while (red_butt) p_red_butt :> red_butt; //Wait for release
-				break;
 
 			case i_quadrature.rotate_event():
 #if 1
@@ -234,6 +226,23 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 				//printintln(new_duty);
 				if (new_duty == 0x100) new_duty = 0x1;
 
+				//Do volume thing
+				int red_butt;
+				p_red_butt :> red_butt;
+				if (red_butt != 0) red_butt_count++;
+				else red_butt_count = 0;
+				if (red_butt_count == 5) {
+					unsigned val = (unsigned)i_resistor.get_val();
+					val = (val * 42) >> 4; // * 42 / 16 to get to max just under 32K
+					val = (val << 16);  //scale up to just under max int;
+					if (val > MAX_VOL) val = MAX_VOL;
+					c_atten <: val;
+					printintln(val);
+					if (!i_mp3_player.is_playing()) {
+						if (i_7_seg.get_val() == 42) i_mp3_player.play_file(sounds[20], strlen(sounds[20]) + 1); //Tee and mo
+						else i_mp3_player.play_file(sounds[2], strlen(sounds[2]) + 1); //Entdoor
+					}
+				}
 				break;
 		}
 	}

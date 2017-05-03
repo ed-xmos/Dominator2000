@@ -70,7 +70,7 @@ void led_7_seg(
 				//current mux off
 				p_com[common_idx] <: 1;
 				//change display
-				p_segments <: ~bit_map[common_idx];
+				p_segments <: ~(unsigned)bit_map[common_idx];
 
 				//next mux line
 				common_idx++;

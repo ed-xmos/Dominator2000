@@ -99,6 +99,9 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
 					index = 0;
 					c_mp3_stop <: 1;
 					break;
+				case i_mp3_player.is_playing(void) -> unsigned isplaying:
+					isplaying = 1;
+					break;
 				//drop through
 				default:
 					break;
@@ -108,19 +111,26 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
 		//printstrln("MP3 player sent terminate\n");
 
 		//This blocks as we want to wait for the next sound
-		select {
-			case i_mp3_player.play_file(const char new_filename[], size_t n):
-				memcpy(filename, new_filename, n);
-				//printf("Opening file (1)...\n");
-				result = i_fs.open(filename, sizeof(filename));
-				if (result != FS_RES_OK) {
-				  printf("result = %d\n", result);
-				  exit(1);
-				}
-				result = i_fs.seek(0, 1);
-				index = 0;
-				c_mp3_stop <: 1;
-				break;
+		unsigned drop_through = 0;
+		while (!drop_through){
+			select {
+				case i_mp3_player.play_file(const char new_filename[], size_t n):
+					memcpy(filename, new_filename, n);
+					//printf("Opening file (1)...\n");
+					result = i_fs.open(filename, sizeof(filename));
+					if (result != FS_RES_OK) {
+					  printf("result = %d\n", result);
+					  exit(1);
+					}
+					result = i_fs.seek(0, 1);
+					index = 0;
+					c_mp3_stop <: 1;
+					drop_through = 1;
+					break;
+				case i_mp3_player.is_playing(void) -> unsigned isplaying:
+					isplaying = 0;
+					break;
+			}
 		}
 	} //while (2)
 }

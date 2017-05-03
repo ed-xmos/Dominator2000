@@ -17,7 +17,7 @@ APP_NAME =
 # If the variable XCC_MAP_FLAGS is set it overrides the flags passed to 
 # xcc for the final link (mapping) stage.
 
-XCC_FLAGS = -Wall -Os -g -report -lquadflash
+XCC_FLAGS = -Os -g -report -lquadflash
 #-DUNSAFE_LIBC
 
 # The USED_MODULES variable lists other module used by the application. 
