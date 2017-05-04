@@ -87,146 +87,206 @@ enum sound_idxs {
 void bargraph_update(unsigned bits);
 
 #define PERIODIC_TIMER	1000000	//10ms app timer
-#define NUM_PROGS					11
+#define NUM_PROGS					((5 + 3) * 2)
 #define MAX_PROG_LENGTH		128
 
 typedef enum instructions {
 	NOP = 0x00000000,
-	LED = 0x01000000,
-	PLAY = 0x02000000,
-	END = 0x030000000,
+	PLAY = 0x01000000,
+	MATRIX = 0x02000000,
+	SEG7 = 0x03000000,
+	METER = 0x04000000,
+	RGB = 0x05000000,
+	LED0 = 0x10000000,
+	LED1 = 0x11000000,
+	LED2 = 0x12000000,
+	LED3 = 0x13000000,
+	LED4 = 0x14000000,
+	LED5 = 0x15000000,
+	LED6 = 0x16000000,
+	END = 0xFF000000,
+
 } instructions;
 
 typedef enum operands {
-	OFF = 0x00000000,
-	ON = 0x00010000
+	OFF = 0x00ff0000,
+	DIM = 0x00a00000,
+	ON = 0x00000000,
+	SPACEINV = 0x00100000,
+	EXPLODE0 = 0x00210000,
+	EXPLODE1 = 0x00220000,
+	EXPLODE2 = 0x00230000,
+	EXPLODE3 = 0x00240000,
+	BLANK = 0x00200000
 } operands;
 
 unsigned running[NUM_PROGS] = {0};
 unsigned intstr_idx[NUM_PROGS] = {0};
 unsigned delay_counter[NUM_PROGS] = {0};
 
+//Instuction fromat
+//BYTE3 BYTE2 BYTE1 BYTE0
+//instr val   delay	delay (seq periods)
+
 const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 { //red
 	PLAY | LASER2 | 0,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 0,
+	LED0 | ON | 4,
+	LED0 | OFF| 4,
+	LED0 | ON | 4,
+	LED0 | OFF| 4,
+	LED0 | ON | 4,
+	LED0 | OFF| 0,
 	END |      0
 },
 
 { //green
 	PLAY | LIGHTSBR | 0,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 0,
+	LED1 | ON | 4,
+	LED1 | OFF| 4,
+	LED1 | ON | 4,
+	LED1 | OFF| 4,
+	LED1 | ON | 4,
+	LED1 | OFF| 0,
 	END |      0
 },
 
 { //yellow
 	PLAY | R2D2 | 0,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 0,
+	LED2 | ON | 4,
+	LED2 | OFF| 4,
+	LED2 | ON | 4,
+	LED2 | OFF| 4,
+	LED2 | ON | 4,
+	LED2 | OFF| 0,
 	END |      0
 },
 
 { //blue
 	PLAY | TAINTED | 0,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 0,
+	LED3 | ON | 4,
+	LED3 | OFF| 4,
+	LED3 | ON | 4,
+	LED3 | OFF| 4,
+	LED3 | ON | 4,
+	LED3 | OFF| 0,
 	END |      0
 },
 
 {	//white
 	PLAY | SPCEINV1 | 0,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 0,
+	LED4 | ON | 4,
+	LED4 | OFF| 4,
+	LED4 | ON | 4,
+	LED4 | OFF| 4,
+	LED4 | ON | 4,
+	LED4 | OFF| 0,
 	END |      0
 },
 
-{ //tog down
-	PLAY | LASER2 | 0,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 0,
-	END |      0
-},
+#define TOG_DELAY 5
 
 {	//tog up
-	PLAY | LASER2 | 0,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 0,
-	END |      0
-},
-
-{	//rocker down
-	PLAY | LASER2 | 0,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 0,
+	PLAY | SPCEINV1 | 0,
+	MATRIX | SPACEINV | 0,
+	LED0 | ON | TOG_DELAY,
+	LED1 | ON | TOG_DELAY,
+	LED2 | ON | TOG_DELAY,
+	LED3 | ON | TOG_DELAY,
+	LED4 | ON | TOG_DELAY,
+	LED0 | OFF | TOG_DELAY,
+	LED1 | OFF | TOG_DELAY,
+	LED2 | OFF | TOG_DELAY,
+	LED3 | OFF | TOG_DELAY,
+	LED4 | OFF | TOG_DELAY,
+	LED0 | ON | TOG_DELAY,
+	LED1 | ON | TOG_DELAY,
+	LED2 | ON | TOG_DELAY,
+	LED3 | ON | TOG_DELAY,
+	LED4 | ON | TOG_DELAY,
 	END |      0
 },
 
 {	//rocker up
-	PLAY | LASER2 | 0,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 0,
-	END |      0
-},
-
-{	//missile down
-	PLAY | FLASHCHG | 0,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 0,
+	PLAY | R2D2 | 0,
+	LED5 | OFF| 4,	
+	LED5 | ON | 4,
+	LED5 | OFF| 4,
+	LED5 | ON | 4,
+	LED5 | OFF| 4,
+	LED5 | ON | 4,
+	LED5 | OFF| 0,
 	END |      0
 },
 
 { //missile up
 	PLAY | EXPLODE | 0,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 4,
-	LED | ON | 4,
-	LED | OFF| 0,
+	MATRIX | EXPLODE0 | 0,
+	LED6 | OFF| 4,	
+	LED6 | ON | 4,
+	LED6 | OFF| 4,
+	LED6 | ON | 4,
+	LED6 | OFF| 4,
+	LED6 | ON | 4,
+	MATRIX | EXPLODE1 | 20,
+	MATRIX | EXPLODE2 | 20,
+	MATRIX | EXPLODE3 | 20,
+	MATRIX | BLANK | 0,
+
 	END |      0
 },
+
+//5 x button up
+{	END |      0},
+{	END |      0},
+{	END |      0},
+{	END |      0},
+{	END |      0},
+
+{ //tog down
+	PLAY | SPCEINV2 | 0,
+	MATRIX | SPACEINV | 0,
+	LED4 | ON | TOG_DELAY,
+	LED3 | ON | TOG_DELAY,
+	LED2 | ON | TOG_DELAY,
+	LED1 | ON | TOG_DELAY,
+	LED0 | ON | TOG_DELAY,
+	LED4 | OFF | TOG_DELAY,
+	LED3 | OFF | TOG_DELAY,
+	LED2 | OFF | TOG_DELAY,
+	LED1 | OFF | TOG_DELAY,
+	LED0 | OFF | TOG_DELAY,
+	LED4 | ON | TOG_DELAY,
+	LED3 | ON | TOG_DELAY,
+	LED2 | ON | TOG_DELAY,
+	LED1 | ON | TOG_DELAY,
+	LED0 | ON | TOG_DELAY,
+	END |      0
+},
+
+{	//rocker down
+	PLAY | CHEWY | 0,
+	LED5 | ON | 4,
+	LED5 | OFF| 4,
+	LED5 | ON | 4,
+	LED5 | OFF| 4,
+	LED5 | ON | 4,
+	LED5 | OFF| 4,
+	LED5 | ON | 0,
+	END |      0
+},
+
+{	//missile down
+	PLAY | FLASHCHG | 0,
+	LED6 | OFF| 4,	
+	LED6 | ON | 4,
+	LED6 | OFF| 4,
+	LED6 | ON | 4,
+	LED6 | OFF| 4,
+	LED6 | ON | 0,
+	END |      0
+},
+
 
 };
 
@@ -243,6 +303,14 @@ void do_sequencer(client i_buttons_t i_buttons, unsigned butt_led_duties[8], uns
 						running[i] = 1;
 						intstr_idx[i] = 0;
 						delay_counter[i] = 0;
+						//printintln(i);
+					}
+					if (button_event[i] == BUTTON_RELEASED) {
+						unsigned prog_idx = i + MAX_INPUT_PORT_BITS;
+						running[prog_idx] = 1;
+						intstr_idx[prog_idx] = 0;
+						delay_counter[prog_idx] = 0;
+						//printintln(prog_idx);
 					}
 				}
 			break;
@@ -264,19 +332,79 @@ void do_sequencer(client i_buttons_t i_buttons, unsigned butt_led_duties[8], uns
 					case NOP:
 						break;
 
-					case LED:
-						//todo
+					case LED0:
+					case LED1:
+					case LED2:
+					case LED3:
+					case LED4:
+					case LED5:
+					case LED6:
+						unsigned duty = operand >> 16;
+						unsigned led_idx = (instruction - LED0) >> 24;
+						unsigned led_idx_mapped;
+						switch (led_idx) {
+							case 0:
+								led_idx_mapped = 0;
+								break;
+							case 1:
+								led_idx_mapped = 3;
+								break;
+							case 2:
+								led_idx_mapped = 1;
+								break;
+							case 3:
+								led_idx_mapped = 4;
+								break;
+							case 4:
+								led_idx_mapped = 2;
+								break;
+							case 5:
+								led_idx_mapped = 5;
+								break;
+							case 6:
+								led_idx_mapped = 6;
+								break;
+						}
+						butt_led_duties[led_idx_mapped] = duty;
+						break;
+
+					case MATRIX:
+						switch (operand){
+							case SPACEINV:
+								const unsigned sprite_idxs[] = {2, 3};
+								i_led_matrix.scroll_sprites(sprite_idxs, 2);
+								break;
+							case EXPLODE0:
+								i_led_matrix.show_sprite(6);
+								break;
+							case EXPLODE1:
+								i_led_matrix.show_sprite(7);
+								break;
+							case EXPLODE2:
+								i_led_matrix.show_sprite(8);
+								break;
+							case EXPLODE3:
+								i_led_matrix.show_sprite(9);
+								break;
+							case BLANK:
+								i_led_matrix.show_sprite(0);
+								break;
+							default:
+								printstrln("Missing led matrix operand");
+								break;
+						}
 						break;
 
 					case PLAY:
 						char track[64];
 						strcpy(track, sounds[(operand >> 16)] );
 						i_mp3_player.play_file(track, strlen(track) + 1);
+						//printf("Playing %s\n", track);
 						break;
 
 					case END:
 						running[i] = 0;
-						printf("END\n");
+						//printf("END\n");
 						break;
 
 					default:
@@ -288,7 +416,7 @@ void do_sequencer(client i_buttons_t i_buttons, unsigned butt_led_duties[8], uns
 			} 
 			else //delay_counter is non-zero
 			{
-				printf("waiting - %d\n", delay_counter[i]);
+				//printf("waiting - %d\n", delay_counter[i]);
 				delay_counter[i]--; //skip instruction for once cycle
 			}
 		}
@@ -304,13 +432,8 @@ void do_sequencer(client i_buttons_t i_buttons, unsigned butt_led_duties[8], uns
 void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbgr_duties[4],
 	client i_quadrature_t i_quadrature, client i_resistor_t i_resistor, client i_mp3_player_t i_mp3_player, chanend c_atten,
 	client i_7_seg_t i_7_seg, client i_led_matrix_t i_led_matrix) {
-	
-	const unsigned n_sounds = sizeof(sounds) / sizeof(const char *);
-	unsigned sound_idx = 0;
 
 	unsigned red_butt_count = 0;
-
-	button_event_t button_event[MAX_INPUT_PORT_BITS] = {0};
 
 	timer t_periodic;
 	int time_periodic_trigger;
@@ -339,6 +462,8 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 				}
 				unsigned count = i_7_seg.get_val();
 				bargraph_update(1 << count / 10);
+				if (count == MAX_VAL) i_mp3_player.play_file(sounds[17], strlen(sounds[17]) + 1); //Starttrek transporter end
+				if (count == MIN_VAL) i_mp3_player.play_file(sounds[18], strlen(sounds[18]) + 1); //Starttrek transporter start
 #endif
 				break;
 

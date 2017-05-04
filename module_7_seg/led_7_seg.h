@@ -1,6 +1,7 @@
 #include <xs1.h>
 
 #define LED_N_DIGITS	2
+#define MIN_VAL	0
 #define MAX_VAL 99
 #define MUX_DELAY		200000	//2ms
 //#define MUX_DELAY 200000000
