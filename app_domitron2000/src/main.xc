@@ -123,6 +123,12 @@ typedef enum operands {
 	YELLOW = 0x00320000,
 	BLUE = 0x00330000,
 	WHITE = 0x00340000,
+	METER0 = 0x00010000,
+	METER1 = 0x00330000,
+	METER2 = 0x00660000,
+	METER3 = 0x00990000,
+	METER4 = 0x00cc0000,
+	METER5 = 0x00ff0000,
 	BLANK = 0x00200000
 } operands;
 
@@ -228,7 +234,7 @@ const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 	LED5 | ON | 4,
 	LED5 | OFF| 120,
 	MATRIX | VADERICO | 0,
-	PLAY | VADERSND | 100,
+	PLAY | VADERSND | 50,
 	MATRIX | BLANK | 0,
 	END |      0
 },
@@ -236,6 +242,7 @@ const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 { //missile up
 	PLAY | EXPLODE | 0,
 	MATRIX | EXPLODE0 | 0,
+	METER | METER0 | 0,
 	LED6 | OFF| 4,	
 	LED6 | ON | 4,
 	LED6 | OFF| 4,
@@ -287,7 +294,7 @@ const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 	LED5 | OFF| 4,
 	LED5 | ON | 120,
 	MATRIX | VADERICO | 0,
-	PLAY | VADERSND | 100,
+	PLAY | VADERSND | 50,
 	MATRIX | BLANK | 0,
 	END |      0
 },
@@ -300,6 +307,12 @@ const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 	LED6 | ON | 4,
 	LED6 | OFF| 4,
 	LED6 | ON | 0,
+	METER | METER0 | 60,
+	METER | METER1 | 60,
+	METER | METER2 | 60,
+	METER | METER3 | 60,
+	METER | METER4 | 60,
+	METER | METER5 | 0,
 	END |      0
 },
 
@@ -436,6 +449,9 @@ void do_sequencer(client i_buttons_t i_buttons, unsigned butt_led_duties[8], uns
 						//printf("Playing %s\n", track);
 						break;
 
+					case METER:
+						mbgr_duties[0] = (operand >> 16);
+						break;
 					case END:
 						running[i] = 0;
 						//printf("END\n");
@@ -505,6 +521,7 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 
 			case i_resistor.value_change_event():
 				unsigned val = (unsigned)i_resistor.get_val();
+				static unsigned scaled_old;
 
 				//printintln(val);
 				q8_24 log_input = (q8_24)((val<<16) + 0x1000000);
@@ -514,11 +531,18 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 				unsigned scaled = val >> 18;
 				if (scaled > 255) scaled = 255; //clip
 				//printintln(scaled);
-				mbgr_duties[0] = scaled;	//Meter
 
 				mbgr_duties[1] = rgb_pallette[4 * scaled + 2];	//Blue
 				mbgr_duties[2] = rgb_pallette[4 * scaled + 1];	//Green
 				mbgr_duties[3] = rgb_pallette[4 * scaled + 0];	//Red
+
+#define DEADZONE	5
+				unsigned abs = (scaled > scaled_old) ? scaled - scaled_old : scaled_old - scaled;
+
+				if (abs > DEADZONE){
+					mbgr_duties[0] = scaled;	//Meter
+					scaled_old = scaled;
+				}
 				break;
 
 			case t_periodic when timerafter(time_periodic_trigger + PERIODIC_TIMER) :> time_periodic_trigger:
