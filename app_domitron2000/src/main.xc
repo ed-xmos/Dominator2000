@@ -24,7 +24,7 @@
 #define I2C_ADDR						0x70	//For LED matrix
 
 #define PWM_DEPTH_BITS_N		8			//For wide PWM
-#define PWM_WIDE_FREQ_HZ		500
+#define PWM_WIDE_FREQ_HZ		100
 
 fl_QSPIPorts qspi_flash_ports = {
   PORT_SQI_CS,
