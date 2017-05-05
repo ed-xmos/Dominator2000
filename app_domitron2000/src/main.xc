@@ -81,7 +81,7 @@ const char * sounds[] = {blaster, chewy, entdoor, explode, flashchg, hhgtelep, h
 enum sound_idxs {
 	BLASTER = 0X00000, CHEWY = 0X10000, ENTDOOR = 0X20000, EXPLODE = 0X30000, FLASHCHG = 0X40000, HHGTELEP = 0X50000, HITHERE = 0X60000, LASER2 = 0X70000, LIGHTSBR = 0X80000,
  PROTONPK = 0X90000, 	QUATTRO = 0XA0000, R2D2 = 0XB0000, SPCEINV1 = 0XC0000, SPCEINV2 = 0XD0000, SPCEINV3 = 0XE0000, STRTRKBR = 0XF0000, STRTRKLB = 0X100000, 
- STRTRKPL = 0X110000, STRTRKTR = 0X120000, TAINTED = 0X130000, TEEANDMO = 0X140000, VADER = 0X140000
+ STRTRKPL = 0X110000, STRTRKTR = 0X120000, TAINTED = 0X130000, TEEANDMO = 0X140000, VADERSND = 0X150000
 };
 
 void bargraph_update(unsigned bits);
@@ -117,6 +117,7 @@ typedef enum operands {
 	EXPLODE1 = 0x00220000,
 	EXPLODE2 = 0x00230000,
 	EXPLODE3 = 0x00240000,
+	VADERICO = 0x00250000,
 	RED = 0x00300000,
 	GREEN = 0x00310000,
 	YELLOW = 0x00320000,
@@ -225,7 +226,10 @@ const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 	LED5 | ON | 4,
 	LED5 | OFF| 4,
 	LED5 | ON | 4,
-	LED5 | OFF| 0,
+	LED5 | OFF| 120,
+	MATRIX | VADERICO | 0,
+	PLAY | VADERSND | 100,
+	MATRIX | BLANK | 0,
 	END |      0
 },
 
@@ -242,7 +246,6 @@ const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 	MATRIX | EXPLODE2 | 20,
 	MATRIX | EXPLODE3 | 20,
 	MATRIX | BLANK | 0,
-
 	END |      0
 },
 
@@ -282,7 +285,10 @@ const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 	LED5 | OFF| 4,
 	LED5 | ON | 4,
 	LED5 | OFF| 4,
-	LED5 | ON | 0,
+	LED5 | ON | 120,
+	MATRIX | VADERICO | 0,
+	PLAY | VADERSND | 100,
+	MATRIX | BLANK | 0,
 	END |      0
 },
 
@@ -395,6 +401,9 @@ void do_sequencer(client i_buttons_t i_buttons, unsigned butt_led_duties[8], uns
 								break;
 							case EXPLODE3:
 								i_led_matrix.show_sprite(9);
+								break;
+							case VADERICO:
+								i_led_matrix.show_sprite(10);
 								break;
 							case BLANK:
 								i_led_matrix.show_sprite(0);

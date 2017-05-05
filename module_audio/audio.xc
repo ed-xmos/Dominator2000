@@ -61,7 +61,7 @@ void mp3_player(client interface fs_basic_if i_fs, streaming chanend c_mp3_chan,
 	  }
 
 
-		//printf("Playing mp3 file %s\n", filename);
+		printf("Playing mp3 file %s\n", filename);
 	  
 
 		unsigned char tmp_buff[512];

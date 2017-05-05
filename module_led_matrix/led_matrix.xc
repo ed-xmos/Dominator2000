@@ -118,8 +118,19 @@ const unsigned char explode3[8] = {
 	0b10010001
 };
 
-//																				0					1						2					3				4			5				6					7					8					9
-const unsigned char * user_sprites[] = {blank2, invader_top, invader0, invader1, ed, pacman, explode0, explode1, explode2, explode3};
+const unsigned char vaderico[8] = {
+	0b00011100,
+	0b00111110,
+	0b01001001,
+	0b01011101,
+	0b01111111,
+	0b01010101,
+	0b01110111,
+	0b01011101
+};
+
+//																				0					1						2					3				4			5				6					7					8					9				10
+const unsigned char * user_sprites[] = {blank2, invader_top, invader0, invader1, ed, pacman, explode0, explode1, explode2, explode3, vaderico};
 
 static void show_sprite(client interface i2c_master_if i_i2c, const unsigned char sprite[]){
 	i2c_res_t result;
