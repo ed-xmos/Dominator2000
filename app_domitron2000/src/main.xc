@@ -117,6 +117,11 @@ typedef enum operands {
 	EXPLODE1 = 0x00220000,
 	EXPLODE2 = 0x00230000,
 	EXPLODE3 = 0x00240000,
+	RED = 0x00300000,
+	GREEN = 0x00310000,
+	YELLOW = 0x00320000,
+	BLUE = 0x00330000,
+	WHITE = 0x00340000,
 	BLANK = 0x00200000
 } operands;
 
@@ -131,6 +136,7 @@ unsigned delay_counter[NUM_PROGS] = {0};
 const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 { //red
 	PLAY | LASER2 | 0,
+	MATRIX | RED | 0,
 	LED0 | ON | 4,
 	LED0 | OFF| 4,
 	LED0 | ON | 4,
@@ -142,6 +148,7 @@ const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 
 { //green
 	PLAY | LIGHTSBR | 0,
+	MATRIX | GREEN | 0,
 	LED1 | ON | 4,
 	LED1 | OFF| 4,
 	LED1 | ON | 4,
@@ -152,7 +159,8 @@ const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 },
 
 { //yellow
-	PLAY | R2D2 | 0,
+	PLAY | BLASTER | 0,
+	MATRIX | YELLOW | 0,
 	LED2 | ON | 4,
 	LED2 | OFF| 4,
 	LED2 | ON | 4,
@@ -164,6 +172,7 @@ const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 
 { //blue
 	PLAY | TAINTED | 0,
+	MATRIX | BLUE | 0,
 	LED3 | ON | 4,
 	LED3 | OFF| 4,
 	LED3 | ON | 4,
@@ -175,6 +184,7 @@ const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 
 {	//white
 	PLAY | SPCEINV1 | 0,
+	MATRIX | WHITE | 0,
 	LED4 | ON | 4,
 	LED4 | OFF| 4,
 	LED4 | ON | 4,
@@ -187,7 +197,7 @@ const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 #define TOG_DELAY 5
 
 {	//tog up
-	PLAY | SPCEINV1 | 0,
+	PLAY | SPCEINV3 | 0,
 	MATRIX | SPACEINV | 0,
 	LED0 | ON | TOG_DELAY,
 	LED1 | ON | TOG_DELAY,
@@ -208,7 +218,7 @@ const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 },
 
 {	//rocker up
-	PLAY | R2D2 | 0,
+	PLAY | CHEWY | 0,
 	LED5 | OFF| 4,	
 	LED5 | ON | 4,
 	LED5 | OFF| 4,
@@ -265,7 +275,7 @@ const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 },
 
 {	//rocker down
-	PLAY | CHEWY | 0,
+	PLAY | R2D2 | 0,
 	LED5 | ON | 4,
 	LED5 | OFF| 4,
 	LED5 | ON | 4,
@@ -389,6 +399,21 @@ void do_sequencer(client i_buttons_t i_buttons, unsigned butt_led_duties[8], uns
 							case BLANK:
 								i_led_matrix.show_sprite(0);
 								break;
+							case RED:
+								i_led_matrix.scroll_text_msg("Red", 4);
+								break;
+							case GREEN:
+								i_led_matrix.scroll_text_msg("Green", 6);
+								break;
+							case YELLOW:
+								i_led_matrix.scroll_text_msg("Yellow", 7);
+								break;
+							case BLUE:
+								i_led_matrix.scroll_text_msg("Blue", 5);
+								break;
+							case WHITE:
+								i_led_matrix.scroll_text_msg("White", 6);
+								break;
 							default:
 								printstrln("Missing led matrix operand");
 								break;
@@ -441,6 +466,8 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 	t_periodic :> time_periodic_trigger;
 
 	i_led_matrix.scroll_text_msg("Domitron 2000", 13);
+
+	bargraph_update(0x0001); //Light bottom seg
 
 	while(1) {
 		select {
@@ -501,9 +528,12 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 					if (val > MAX_VOL) val = MAX_VOL;
 					c_atten <: val;
 					//printintln(val);
+					unsigned seg7_val = i_7_seg.get_val();
+					if (seg7_val == 42) i_mp3_player.play_file(sounds[20], strlen(sounds[20]) + 1); //Tee and mo
+					else if (seg7_val == 88) i_mp3_player.play_file(sounds[10], strlen(sounds[10]) + 1); //Quattro
+
 					if (!i_mp3_player.is_playing()) {
-						if (i_7_seg.get_val() == 42) i_mp3_player.play_file(sounds[20], strlen(sounds[20]) + 1); //Tee and mo
-						else i_mp3_player.play_file(sounds[2], strlen(sounds[2]) + 1); //Entdoor
+						i_mp3_player.play_file(sounds[2], strlen(sounds[2]) + 1); //Entdoor
 					}
 				}
 				break;
