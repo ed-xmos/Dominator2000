@@ -536,7 +536,7 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 				mbgr_duties[2] = rgb_pallette[4 * scaled + 1];	//Green
 				mbgr_duties[3] = rgb_pallette[4 * scaled + 0];	//Red
 
-#define DEADZONE	5
+#define DEADZONE	3
 				unsigned abs = (scaled > scaled_old) ? scaled - scaled_old : scaled_old - scaled;
 
 				if (abs > DEADZONE){
