@@ -574,6 +574,21 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 	}
 }
 
+[[combinable]]
+void null_combinable_task(void){
+	timer t;
+	int time_trig;
+	t :> time_trig;
+	while(1){
+		select{	//Periodic 1.111 second timer
+			case t when timerafter(111100000) :> time_trig:
+			//Do nothing
+			break;
+		}
+	}
+}
+
+
 int main(void) {
 	i_buttons_t i_buttons;
 	i_quadrature_t i_quadrature;
@@ -609,9 +624,10 @@ int main(void) {
 
 			par {			
 				[[combine]] par {
-					pwm_wide_unbuffered(p_rgb_meter, 4, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, mbgr_duties_ptr);
 					quadrature(p_quadrature, i_quadrature);	//This doesn't like being non-combined (exception)
+					null_combinable_task();
 				}
+				pwm_wide_unbuffered(p_rgb_meter, 4, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, mbgr_duties_ptr);
 				pwm_wide_unbuffered(p_butt_leds, 8, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, butt_led_duties_ptr);
 				app(i_buttons, butt_led_duties, mbgr_duties, i_quadrature, i_resistor, i_mp3_player, c_atten, i_7_seg, i_led_matrix);
 				qspi_flash_fs_media(i_media, qspi_flash_ports, qspi_spec, 512);
