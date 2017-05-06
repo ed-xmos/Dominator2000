@@ -87,7 +87,7 @@ enum sound_idxs {
 void bargraph_update(unsigned bits);
 
 #define PERIODIC_TIMER	1000000	//10ms app timer
-#define NUM_PROGS					((5 + 3) * 2)
+#define NUM_PROGS					(((5 + 3) * 2) + 1) //buttons up/down + red_butt
 #define MAX_PROG_LENGTH		128
 
 typedef enum instructions {
@@ -97,6 +97,7 @@ typedef enum instructions {
 	SEG7 = 0x03000000,
 	METER = 0x04000000,
 	RGB = 0x05000000,
+	BAR = 0x06000000,
 	LED0 = 0x10000000,
 	LED1 = 0x11000000,
 	LED2 = 0x12000000,
@@ -129,6 +130,9 @@ typedef enum operands {
 	METER3 = 0x00990000,
 	METER4 = 0x00cc0000,
 	METER5 = 0x00ff0000,
+	READY = 0x00400000,
+	STEADY = 0x00410000,
+	GO = 0x00420000,	
 	BLANK = 0x00200000
 } operands;
 
@@ -316,12 +320,19 @@ const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 	END |      0
 },
 
+{	//red_butt_special
+	BAR | 0 | 100,
+	BAR | READY | 120,
+	BAR | STEADY | 140,
+	BAR | GO | 0,
+	END |      0
+},
 
 };
 
 void do_sequencer(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbgr_duties[4],
 	client i_quadrature_t i_quadrature, client i_resistor_t i_resistor, client i_mp3_player_t i_mp3_player, chanend c_atten,
-	client i_7_seg_t i_7_seg, client i_led_matrix_t i_led_matrix) {
+	client i_7_seg_t i_7_seg, client i_led_matrix_t i_led_matrix, unsigned trig_red_butt) {
 
 	button_event_t button_event[MAX_INPUT_PORT_BITS] = {0};
 	select{
@@ -345,6 +356,13 @@ void do_sequencer(client i_buttons_t i_buttons, unsigned butt_led_duties[8], uns
 			break;
 		default:
 			break;
+	}
+
+	if (trig_red_butt) {
+		unsigned idx = (2 * MAX_INPUT_PORT_BITS);
+		running[idx] = 1;
+		intstr_idx[idx] = 0;
+		delay_counter[idx] = 0;
 	}
 
 	//Do sequencer
@@ -452,10 +470,32 @@ void do_sequencer(client i_buttons_t i_buttons, unsigned butt_led_duties[8], uns
 					case METER:
 						mbgr_duties[0] = (operand >> 16);
 						break;
+
+					case BAR:
+						switch (operand){
+							case 0:
+								bargraph_update(0);
+								break;
+							case READY:
+								bargraph_update(0x380);
+								break;
+							case STEADY:
+								bargraph_update(0x03F8);
+								break;
+							case GO:
+								bargraph_update(0x007);
+								break;
+							default:
+								printstrln("Missing led matrix operand");
+								break;
+						}
+						break;
+
 					case END:
 						running[i] = 0;
 						//printf("END\n");
 						break;
+
 
 					default:
 						printf("invalid instruction\n");
@@ -484,6 +524,7 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 	client i_7_seg_t i_7_seg, client i_led_matrix_t i_led_matrix) {
 
 	unsigned red_butt_count = 0;
+	unsigned do_redd_butt = 0;
 
 	timer t_periodic;
 	int time_periodic_trigger;
@@ -546,7 +587,8 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 				break;
 
 			case t_periodic when timerafter(time_periodic_trigger + PERIODIC_TIMER) :> time_periodic_trigger:
-				do_sequencer(i_buttons, butt_led_duties, mbgr_duties, i_quadrature, i_resistor, i_mp3_player, c_atten, i_7_seg, i_led_matrix);
+				do_sequencer(i_buttons, butt_led_duties, mbgr_duties, i_quadrature, i_resistor, i_mp3_player, c_atten, i_7_seg, i_led_matrix, do_redd_butt);
+				do_redd_butt = 0;
 
 
 				//Do volume thing
@@ -563,7 +605,10 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 					//printintln(val);
 					unsigned seg7_val = i_7_seg.get_val();
 					if (seg7_val == 42) i_mp3_player.play_file(sounds[20], strlen(sounds[20]) + 1); //Tee and mo
-					else if (seg7_val == 88) i_mp3_player.play_file(sounds[10], strlen(sounds[10]) + 1); //Quattro
+					else if (seg7_val == 88) {
+						i_mp3_player.play_file(sounds[10], strlen(sounds[10]) + 1); //Quattro
+						do_redd_butt = 1;
+					}
 
 					if (!i_mp3_player.is_playing()) {
 						i_mp3_player.play_file(sounds[2], strlen(sounds[2]) + 1); //Entdoor
