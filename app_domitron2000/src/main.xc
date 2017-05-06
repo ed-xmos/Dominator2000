@@ -124,6 +124,7 @@ typedef enum operands {
 	YELLOW = 0x00320000,
 	BLUE = 0x00330000,
 	WHITE = 0x00340000,
+	GO_ = 0x00350000,
 	METER0 = 0x00010000,
 	METER1 = 0x00330000,
 	METER2 = 0x00660000,
@@ -323,7 +324,8 @@ const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 {	//red_butt_special
 	BAR | 0 | 100,
 	BAR | READY | 120,
-	BAR | STEADY | 140,
+	BAR | STEADY | 110,
+	MATRIX | GO_ | 30,
 	BAR | GO | 0,
 	END |      0
 },
@@ -454,6 +456,9 @@ void do_sequencer(client i_buttons_t i_buttons, unsigned butt_led_duties[8], uns
 							case WHITE:
 								i_led_matrix.scroll_text_msg("White", 6);
 								break;
+							case GO_:
+								i_led_matrix.scroll_text_msg("go!", 4);
+								break;
 							default:
 								printstrln("Missing led matrix operand");
 								break;
@@ -547,12 +552,13 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 				}
 				if (rotation == 1) {
 					i_7_seg.inc_val();
-					//printstr("+");
+					//printstrln("+");
 				}
-				if (rotation == -1) {
+				else if (rotation == -1) {
 					i_7_seg.dec_val();
-					//printstr("-");
+					//printstrln("-");
 				}
+				else printintln(rotation);
 				unsigned count = i_7_seg.get_val();
 				bargraph_update(1 << count / 10);
 				if (count == MAX_VAL) i_mp3_player.play_file(sounds[17], strlen(sounds[17]) + 1); //Starttrek transporter end
