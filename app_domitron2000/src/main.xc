@@ -37,7 +37,7 @@ on tile[0]: out port p_butt_leds = XS1_PORT_8B; //X0D14..21
 on tile[0]: out port p_bargraph = XS1_PORT_16B; //X0D26..27, X0D36..39
 on tile[0]: out port p_bargraph3 = XS1_PORT_1K; //X0D34
 on tile[0]: out port p_bargraph4 = XS1_PORT_1L; //X0D35
-on tile[0]: in port p_quadrature[2] = {XS1_PORT_1G, XS1_PORT_1H}; //X0D22,33
+on tile[0]: in port p_quadrature[2] = {XS1_PORT_1G, XS1_PORT_1H}; //X0D22, 33
 on tile[0]: out port p_rgb_meter = XS1_PORT_4F; //X0D28..31
 on tile[0]: port p_scl = XS1_PORT_1E; //X0D12
 on tile[0]: port p_sda = XS1_PORT_1F; //X0D13
@@ -87,7 +87,7 @@ enum sound_idxs {
 void bargraph_update(unsigned bits);
 
 #define PERIODIC_TIMER	1000000	//10ms app timer
-#define NUM_PROGS					(((5 + 3) * 2) + 1) //buttons up/down + red_butt
+#define NUM_PROGS					(((5 + 3) * 2) + 2) //buttons up/down + 2x red_butt
 #define MAX_PROG_LENGTH		128
 
 typedef enum instructions {
@@ -134,6 +134,8 @@ typedef enum operands {
 	READY = 0x00400000,
 	STEADY = 0x00410000,
 	GO = 0x00420000,	
+	BAR_FL0 = 0x00430000,
+	BAR_FL1 = 0x00440000,
 	BLANK = 0x00200000
 } operands;
 
@@ -321,12 +323,87 @@ const unsigned program[NUM_PROGS][MAX_PROG_LENGTH] = {
 	END |      0
 },
 
-{	//red_butt_special
+{	//red_butt_special 1 (quattro)
 	BAR | 0 | 100,
 	BAR | READY | 120,
 	BAR | STEADY | 110,
 	MATRIX | GO_ | 30,
 	BAR | GO | 0,
+	END |      0
+},
+
+{	//red_butt_special 2 (star trek)
+	LED4 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+	LED4 | ON | 0,
+	BAR | BAR_FL1 | 50,
+  LED1 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+  LED1 | ON | 0,
+	BAR | BAR_FL1 | 50,
+  LED0 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+  LED0 | ON | 0,
+	BAR | BAR_FL1 | 50,
+  LED3 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+  LED3 | ON | 0,
+	BAR | BAR_FL1 | 50,
+	LED2 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+	LED2 | ON | 0,
+	BAR | BAR_FL1 | 50,
+  LED1 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+  LED1 | ON | 0,
+	BAR | BAR_FL1 | 50,
+  LED3 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+  LED3 | ON | 0,
+	BAR | BAR_FL1 | 50,
+	LED4 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+	LED4 | ON | 0,
+	BAR | BAR_FL1 | 50,
+  LED1 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+  LED1 | ON | 0,
+	BAR | BAR_FL1 | 50,
+  LED0 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+  LED0 | ON | 0,
+	BAR | BAR_FL1 | 50,
+  LED3 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+  LED3 | ON | 0,
+	BAR | BAR_FL1 | 50,
+	LED2 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+	LED2 | ON | 0,
+	BAR | BAR_FL1 | 50,
+  LED1 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+  LED1 | ON | 0,
+	BAR | BAR_FL1 | 50,
+  LED3 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+  LED3 | ON | 0,
+	BAR | BAR_FL1 | 50,
+  LED1 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+  LED1 | ON | 0,
+	BAR | BAR_FL1 | 50,
+  LED0 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+  LED0 | ON | 0,
+	BAR | BAR_FL1 | 50,
+  LED3 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+  LED3 | ON | 0,
+	BAR | BAR_FL1 | 50,
+	LED2 | OFF | 0,
+	BAR | BAR_FL0 | 50,
+	LED2 | ON | 0,
 	END |      0
 },
 
@@ -360,8 +437,15 @@ void do_sequencer(client i_buttons_t i_buttons, unsigned butt_led_duties[8], uns
 			break;
 	}
 
-	if (trig_red_butt) {
+	if (trig_red_butt == 1) {
 		unsigned idx = (2 * MAX_INPUT_PORT_BITS);
+		running[idx] = 1;
+		intstr_idx[idx] = 0;
+		delay_counter[idx] = 0;
+	}
+
+	if (trig_red_butt == 2) {
+		unsigned idx = (2 * MAX_INPUT_PORT_BITS + 1);
 		running[idx] = 1;
 		intstr_idx[idx] = 0;
 		delay_counter[idx] = 0;
@@ -490,6 +574,12 @@ void do_sequencer(client i_buttons_t i_buttons, unsigned butt_led_duties[8], uns
 							case GO:
 								bargraph_update(0x007);
 								break;
+							case BAR_FL0:
+								bargraph_update(0x555);
+								break;
+							case BAR_FL1:
+								bargraph_update(0xaaa);
+								break;
 							default:
 								printstrln("Missing led matrix operand");
 								break;
@@ -558,7 +648,7 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 					i_7_seg.dec_val();
 					//printstrln("-");
 				}
-				else printintln(rotation);
+				//else printintln(rotation);
 				unsigned count = i_7_seg.get_val();
 				bargraph_update(1 << count / 10);
 				if (count == MAX_VAL) i_mp3_player.play_file(sounds[17], strlen(sounds[17]) + 1); //Starttrek transporter end
@@ -610,10 +700,21 @@ void app(client i_buttons_t i_buttons, unsigned butt_led_duties[8], unsigned mbg
 					c_atten <: val;
 					//printintln(val);
 					unsigned seg7_val = i_7_seg.get_val();
-					if (seg7_val == 42) i_mp3_player.play_file(sounds[20], strlen(sounds[20]) + 1); //Tee and mo
-					else if (seg7_val == 88) {
+					//test for tee and mo
+					if ((seg7_val >= 40) && (seg7_val < 50)) {
+						i_mp3_player.play_file(sounds[20], strlen(sounds[20]) + 1); //Tee and mo
+						i_led_matrix.scroll_text_msg("Are we ready to go? Uh oh!!", 28);
+					}
+					//ready steady go!
+					else if ((seg7_val >= 80) && (seg7_val < 100)) {
 						i_mp3_player.play_file(sounds[10], strlen(sounds[10]) + 1); //Quattro
 						do_redd_butt = 1;
+					}
+					//starttrek bridge
+					else if ((seg7_val >= 20) && (seg7_val < 30)) {
+						i_mp3_player.play_file(sounds[15], strlen(sounds[15]) + 1); //Bridge sounds
+						i_led_matrix.scroll_text_msg("------------------------------", 31);
+						do_redd_butt = 2;
 					}
 
 					if (!i_mp3_player.is_playing()) {
