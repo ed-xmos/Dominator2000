@@ -118,14 +118,14 @@ int decoderMain(chanend pcmChan, streaming_chanend_t rxChan, chanend c_mp3_stop)
 			default:
 				outOfData = 1;
 				printf("Decode failed with error %d\n", err);
-				while (1);
+				//while (1);
 				break;
 			}
 		}
 		else 
 		{
 			/* no error */
-			// MP3GetLastFrameInfo(hMP3Decoder, &mp3FrameInfo);
+			MP3GetLastFrameInfo(hMP3Decoder, &mp3FrameInfo);
 		}
 	check_for_stop(&outOfData, c_mp3_stop); //will set outofdata to 1 if token received
 
