@@ -44,7 +44,7 @@ static inline void quadrature_decode(int p, unsigned old_port_val[2], unsigned n
 void quadrature(in port p_input[2], server i_quadrature_t i_quadrature) {
 	timer t[2];
 	int trigger_time[2];
-	int debounce_state[2] = {0};
+	int debounce_state[2] = {0, 0};
 
 #if DEBUG_POLL
 	const int print_period = 10000000; //100ms

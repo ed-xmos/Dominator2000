@@ -775,9 +775,9 @@ int main(void) {
 		  delay_milliseconds(500);	//Allow amp to power up
 
 			par {			
-				[[combine]] par {
+				 par {
 					null_comb_task();
-					quadrature(p_quadrature, i_quadrature);	//This doesn't like being non-combined (exception)
+					quadrature(p_quadrature, i_quadrature);	//This doesn't like being non-combined (exception) in tools 14.3. OK in 14.2.4!
 				}
 				[[combine]] par {
 					pwm_wide_unbuffered(p_rgb_meter, 4, PWM_WIDE_FREQ_HZ, PWM_DEPTH_BITS_N, mbgr_duties_ptr);
